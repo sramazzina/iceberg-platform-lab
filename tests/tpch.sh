@@ -7,6 +7,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 source "$ROOT/tests/lib/assert.sh"
 source "$ROOT/tests/lib/spark-sql.sh"
+source "$ROOT/tests/lib/s3-left.sh"
 cd "$ROOT"
 if [[ -v COMPOSE_PROFILES ]]; then keep=$COMPOSE_PROFILES; fi
 set -a; source .env; set +a
@@ -27,13 +28,6 @@ count() { spark_sql "SELECT concat('n=', count(*)) FROM $catalog.tpch_raw.$1" | 
 parquet_count() {
   docker compose exec -T spark python3 -c 'import duckdb, sys; print(duckdb.sql("SELECT count(*) FROM read_parquet(?)", params=[sys.argv[1]]).fetchone()[0])' \
     "/workspace/$dir/$1.parquet" 2>&1
-}
-# left: the number of objects under the S3 prefix of the catalog in a tpch_ namespace.
-left() {
-  local out rc=0
-  out=$(docker compose exec -T spark bash -c "aws s3 ls --recursive s3://\$S3_BUCKET/$catalog/" 2>&1) || rc=$?
-  if (( rc > 1 )); then echo "$out"; echo "left: aws s3 ls failed"; return; fi
-  grep -c '/tpch_' <<<"$out" || true
 }
 # lineitem_count: the lineitem rows of the orders with o_orderdate <= DATE '1996-12-31'.
 lineitem_count() {
@@ -75,12 +69,12 @@ done
 (( partial < $(count orders) )) && pass "the full load has more orders than the UNTIL load" \
   || fail "the full load has more orders than the UNTIL load"
 
-(( $(left) > 0 )) && pass "the S3 probe sees the tpch_raw files" || fail "the S3 probe sees the tpch_raw files"
+(( $(s3_left "$catalog") > 0 )) && pass "the S3 probe sees the tpch_raw files" || fail "the S3 probe sees the tpch_raw files"
 
 out=$(make -s tpch-clean CATALOG="$catalog" 2>&1 || echo "tpch-clean failed")
 assert_not_contains "$out" "tpch-clean failed" "make tpch-clean"
 assert_not_contains "$out" "tpch-clean: FAIL" "make tpch-clean leaves no file"
 assert_not_contains "$(spark_sql "SHOW NAMESPACES IN $catalog")" "tpch_raw" "namespace tpch_raw dropped"
-assert_eq "$(left)" "0" "no object left under $catalog/ in a tpch_ namespace"
+assert_eq "$(s3_left "$catalog")" "0" "no object left under $catalog/ in a tpch_ namespace"
 
 finish

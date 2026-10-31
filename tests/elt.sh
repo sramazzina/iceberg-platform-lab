@@ -6,6 +6,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 source "$ROOT/tests/lib/assert.sh"
 source "$ROOT/tests/lib/spark-sql.sh"
+source "$ROOT/tests/lib/s3-left.sh"
 cd "$ROOT"
 if [[ -v COMPOSE_PROFILES ]]; then keep=$COMPOSE_PROFILES; fi
 set -a; source .env; set +a
@@ -23,7 +24,6 @@ trap 'make -s tpch-clean CATALOG="$catalog" >/dev/null 2>&1 || echo "  warn - ma
 # value SQL: the single value of a query that returns concat('v=', ...).
 value() { spark_sql "$1" | sed -n 's/^v=//p'; }
 fct=$catalog.tpch_marts.fct_lineitem
-left() { docker compose exec -T spark bash -c "aws s3 ls --recursive s3://\$S3_BUCKET/$catalog/ | grep -c '/tpch_' || true"; }
 
 echo "elt $catalog"
 make -s tpch-gen SF=$sf >/dev/null 2>&1 || fail "make tpch-gen SF=$sf"
@@ -61,6 +61,6 @@ assert_eq "$(grep -Ex '(0: jdbc:[^>]*> )?25' <<<"$jdbc" | sed 's/^.*> //' || tru
 out=$(make -s tpch-clean CATALOG="$catalog" 2>&1 || echo "tpch-clean failed")
 assert_not_contains "$out" "tpch-clean failed" "make tpch-clean"
 assert_not_contains "$out" "tpch-clean: FAIL" "make tpch-clean leaves no file"
-assert_eq "$(left)" "0" "no object left under $catalog/ in a tpch_ namespace"
+assert_eq "$(s3_left "$catalog")" "0" "no object left under $catalog/ in a tpch_ namespace"
 
 finish
