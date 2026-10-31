@@ -19,6 +19,7 @@ assert_contains "$py" "4.1.3 0.12.0" "PySpark and PyIceberg import"
 tools=$(run python3 -c 'import dbt.version, duckdb, pyhive, thrift; from importlib.metadata import version; print("dbt-core", version("dbt-core"), "dbt-spark", version("dbt-spark"), "duckdb", duckdb.__version__, "thrift", version("thrift"))')
 assert_contains "$tools" "dbt-core 1.12.6 dbt-spark 1.11.0 duckdb 1.5.6 thrift 0.22.0" "dbt, dbt-spark, DuckDB and thrift pinned versions"
 assert_contains "$(run dbt --version)" "spark: 1.11.0" "dbt finds the spark adapter"
+assert_contains "$(run git --version)" "git version" "git is installed (dbt debug needs it)"
 tpch=$(run python3 -c 'import duckdb; c = duckdb.connect(); c.execute("SET autoinstall_known_extensions = false"); c.execute("CALL dbgen(sf = 0.001)"); print("region=%d" % c.sql("SELECT count(*) FROM region").fetchone()[0])')
 assert_contains "$tpch" "region=5" "DuckDB tpch works without a download"
 assert_contains "$jars" "spark-hive-thriftserver_2.13-4.1.3.jar" "Spark Thrift Server jar"

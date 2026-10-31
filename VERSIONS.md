@@ -42,6 +42,10 @@ lab uses it under the Artistic License (user decision, 2026-10-30). The DuckDB `
 extension is downloaded at image build time (`spark/Dockerfile`); DuckDB checks its
 signature.
 
+`git` is an OS package (Ubuntu repositories, through the Spark base image; no pin). Its license
+is GPL-2.0. The lab accepts it (user decision, 2026-10-31): it is a separate binary, used only
+by `dbt debug` and `dbt deps`, and it is not linked into the project.
+
 ## Compatibility
 
 | Check | Result | Source |

@@ -6,7 +6,7 @@ FROM ${SPARK_BASE_IMAGE}
 USER root
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl unzip \
+ && apt-get install -y --no-install-recommends curl git unzip \
  && rm -rf /var/lib/apt/lists/*
 
 # Iceberg jars from Maven Central, checked against the pinned SHA-1.
