@@ -34,6 +34,11 @@ assert_eq "$(src "$aws" rest-fixture /home/iceberg)" "rest-fixture-data" "rest c
 assert_eq "$(q "$aws" '.services["spark-thrift"].profiles | join(",")')" "thrift" "spark-thrift is in the profile thrift"
 assert_eq "$(q "$aws" '[.services["spark-thrift"].ports[] | "\(.host_ip):\(.published)->\(.target)"] | join(",")')" \
   "127.0.0.1:10000->10000" "spark-thrift port on 127.0.0.1:10000"
+assert_eq "$(q "$aws" '[.services.nessie.ports[] | select(.target == 9000) | "\(.host_ip):\(.published)"] | join(",")')" \
+  "127.0.0.1:9000" "nessie management port on 127.0.0.1:9000 by default"
+nessie_mgmt=$(NESSIE_MGMT_PORT=19000 config docker-compose.yml)
+assert_eq "$(q "$nessie_mgmt" '[.services.nessie.ports[] | select(.target == 9000) | "\(.host_ip):\(.published)"] | join(",")')" \
+  "127.0.0.1:19000" "NESSIE_MGMT_PORT sets the nessie management host port"
 assert_eq "$(q "$aws" '.services["spark-thrift"].image')" "$(q "$aws" '.services.spark.image')" "spark-thrift uses the spark image"
 assert_eq "$(q "$aws" '.services["spark-thrift"].environment.LAB_CATALOGS')" "$(q "$aws" '.services.spark.environment.LAB_CATALOGS')" "spark-thrift renders the same catalogs as spark"
 assert_eq "$(src "$aws" spark-thrift /run/lab-secrets | sed 's#.*/##')" "secrets" "spark-thrift reads secrets"

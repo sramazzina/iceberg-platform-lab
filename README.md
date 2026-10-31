@@ -176,12 +176,14 @@ tunnel instead.
 | JupyterLab (asks for `JUPYTER_TOKEN` from `.env`) | 8888 | <http://localhost:8888> |
 | Spark UI (only while a Spark session runs) | 4040 | <http://localhost:4040> |
 | Nessie API | 19120 | <http://localhost:19120/api/v2/trees> |
-| Nessie management (health) | 9000 | <http://localhost:9000/q/health/ready> |
+| Nessie management (health) | `NESSIE_MGMT_PORT` (default 9000) | <http://localhost:9000/q/health/ready> |
 | Polaris API (needs a token) | 8181 | <http://localhost:8181/api/management/v1/catalogs> |
 | Polaris management (health) | 8182 | <http://localhost:8182/q/health/ready> |
 | Baseline REST catalog (no authentication) | 8183 | <http://localhost:8183/v1/config> |
 
 A catalog port answers only when the catalog is on (`COMPOSE_PROFILES`).
+If host port 9000 is in use, set `NESSIE_MGMT_PORT` in `.env` and run `make up`.
+Use that port in the address of the table.
 
 ### SSH tunnel
 
@@ -194,7 +196,7 @@ A catalog port answers only when the catalog is on (`COMPOSE_PROFILES`).
      -L 8888:127.0.0.1:8888 \
      -L 4040:127.0.0.1:4040 \
      -L 19120:127.0.0.1:19120 \
-     -L 9000:127.0.0.1:9000 \
+     -L 9000:127.0.0.1:<NESSIE_MGMT_PORT> \
      -L 8181:127.0.0.1:8181 \
      -L 8182:127.0.0.1:8182 \
      -L 8183:127.0.0.1:8183 \
@@ -205,8 +207,8 @@ A catalog port answers only when the catalog is on (`COMPOSE_PROFILES`).
 4. Open the addresses of the table in your browser.
 
 If a port is already in use on your machine, change only the first number. For example,
-`-L 19000:127.0.0.1:9000` makes the Nessie management port available on
-<http://localhost:19000>.
+`-L 19000:127.0.0.1:<NESSIE_MGMT_PORT>` makes the Nessie management port available on
+<http://localhost:19000>. Replace `<NESSIE_MGMT_PORT>` with its value (default 9000).
 
 ### SSM port forwarding
 
