@@ -164,11 +164,11 @@ with each catalog.
 | `make logs` | Shows the logs of the running services |
 | `make lint` | Static checks: script syntax, JSON, Compose file, no secret in tracked files |
 | `make test-aws` | Tests the AWS scripts against a stub AWS CLI (no AWS access) |
-| `make tpch-gen SF=<n>` | Generate the TPC-H tables as Parquet files in `landing/tpch/sf<n>/` (default `SF=1`) |
-| `make tpch-load CATALOG=<c> SF=<n> [UNTIL=<date>]` | Load the Parquet files into `<c>.tpch_raw` |
-| `make dbt CATALOG=<c> ARGS="<dbt arguments>"` | Run dbt on the catalog `<c>` (needs the profile `thrift`) |
-| `make tpch-clean CATALOG=<c>` | Drop `tpch_raw`, `tpch_staging`, `tpch_marts` of `<c>`, files included |
-| `make elt-test CATALOG=<c>` | End-to-end ELT test on `<c>` (small scale) |
+| `make tpch-gen SF=<n>` | Generates the TPC-H tables as Parquet files in `landing/tpch/sf<n>/` (default `SF=1`) |
+| `make tpch-load CATALOG=<c> SF=<n> [UNTIL=<date>]` | Loads the Parquet files into `<c>.tpch_raw` |
+| `make dbt CATALOG=<c> ARGS="<dbt arguments>"` | Runs dbt on the catalog `<c>` (needs the profile `thrift`) |
+| `make tpch-clean CATALOG=<c>` | Drops `tpch_raw`, `tpch_staging`, `tpch_marts` of `<c>`, files included |
+| `make elt-test CATALOG=<c>` | Runs the end-to-end ELT test on `<c>` (small scale) |
 
 ## Access from your machine
 
@@ -329,13 +329,19 @@ the end.
    make tpch-clean CATALOG=nessie
    ```
 
+   `make tpch-clean` keeps the empty namespace `default` that `make dbt` creates (it has no
+   file in S3).
+
 For another catalog, use `CATALOG=polaris` or `CATALOG=rest`. `SF=1` is verified; larger
 scale factors are not verified (the Thrift Server has `spark.driver.memory 4g`).
 
 ### Connect a JDBC client (DBeaver)
 
 The Spark Thrift Server speaks the HiveServer2 protocol. It has **no authentication**; the
-port is published on `127.0.0.1` of the VM only.
+port is published on `127.0.0.1` of the VM only. Any user or process on the VM can connect
+and run SQL with the credentials of the lab, and can read the files that the container can
+read. Start the profile `thrift` only on a host that you do not share, and stop it when you
+do not use it.
 
 1. Start the stack with the profile `thrift` (see [Run the pipeline](#run-the-pipeline)).
 2. On a remote VM, open the tunnel for port 10000 (see [SSH tunnel](#ssh-tunnel)).
@@ -352,7 +358,7 @@ port is published on `127.0.0.1` of the VM only.
 The lab can run on a PC or on an on-premise server without AWS. RustFS replaces AWS S3: it
 gives the S3 API and STS, and it keeps the data in a local directory. All catalogs work, and
 Polaris vends credentials through the RustFS STS, as on AWS. Verified on Windows (WSL2) with
-Docker Desktop. Not verified on Linux with Docker Engine and on macOS.
+Docker Desktop and on Linux with Docker Engine. Not verified on macOS.
 
 The variant has its own state: the Postgres volume `pgdata-rustfs`, the `rest` catalog
 volume `rest-fixture-data-rustfs` and `secrets/rustfs/`. The state of the AWS stack stays

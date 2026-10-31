@@ -33,7 +33,9 @@ def main():
         try:
             views = {r.viewName for r in spark.sql(f"SHOW VIEWS IN {catalog}.{ns}").collect() if not r.isTemporary}
         except AnalysisException:
-            views = set()  # The catalog has no Iceberg views (NOTES F7, S4).
+            # SHOW VIEWS can fail on a catalog without view support. The pipeline creates
+            # no views (NOTES F7, S4); this step only drops views that someone else made.
+            views = set()
         for v in sorted(views):
             spark.sql(f"DROP VIEW IF EXISTS {catalog}.{ns}.{v}")
             print(f"tpch-clean: dropped view {catalog}.{ns}.{v}")

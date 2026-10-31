@@ -112,7 +112,7 @@ Each entry: what the requirement says, what the lab does, and why.
   `spark-thrift` (profile `thrift`), which external JDBC clients also use.
 - Why: one generic project shows how each catalog keeps the tables of a pipeline. The
   Thrift Server gives JDBC access (DBeaver); the `session` method does not.
-- Spec: `docs/superpowers/specs/2026-10-30-dbt-elt-design.md`. Findings: F7.
+- Spec: `docs/superpowers/specs/2026-10-30-dbt-elt-design.md`. Findings: F7, F8.
 
 ## Findings
 
@@ -230,7 +230,9 @@ All checks ran on the RustFS variant (local workstation, WSL2 with Docker Deskto
   selected catalog, or the connection fails with `SCHEMA_NOT_FOUND`. dbt-spark does not pass
   the PyHive `database` argument.
 - S4: Iceberg views through the REST API: supported on polaris, nessie and rest (dbt `view`
-  model created, and read through a new session on all three).
+  model created, and read through a new session on all three). Polaris does not delete the
+  metadata file of a dropped view, and on AWS the lab role cannot delete it. For this reason
+  the staging models are tables on every catalog.
 - S5: DuckDB 1.5.6 `tpch`: `install_mode` is `NOT_INSTALLED`. The extension is not statically
   linked. `INSTALL tpch` downloads it to `~/.duckdb/extensions/v1.5.6/linux_amd64/`. After the
   install, `CALL dbgen(sf = 0.001)` works (`region` has 5 rows).
@@ -274,5 +276,5 @@ All checks ran on the RustFS variant, on a Linux server with Docker Engine 29.2.
 
 Filled in during the later phases.
 
-- Not verified: the RustFS variant on Linux with Docker Engine and on macOS. The variant is
-  verified on Windows (WSL2) with Docker Desktop.
+- Not verified: the RustFS variant on macOS. The variant is verified on Windows (WSL2) with
+  Docker Desktop and on Linux with Docker Engine (F8).
