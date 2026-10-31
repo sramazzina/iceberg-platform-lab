@@ -1,4 +1,4 @@
-.PHONY: lint test-aws up down reset logs sql-nessie sql-polaris sql-rest nessie-cli smoke-test tpch-gen tpch-load tpch-clean elt-require dbt
+.PHONY: lint test-aws up down reset logs sql-nessie sql-polaris sql-rest nessie-cli smoke-test tpch-gen tpch-load tpch-clean elt-require dbt elt-test
 
 lint:
 	tests/lint.sh
@@ -66,3 +66,6 @@ dbt:
 	elt/require.sh "$(CATALOG)" thrift
 	docker compose exec -T spark-thrift beeline -u 'jdbc:hive2://127.0.0.1:10000/;auth=noSasl' -n spark --silent=true -e "CREATE NAMESPACE IF NOT EXISTS $(CATALOG).default" >/dev/null
 	docker compose exec -T -w /workspace/dbt spark dbt $(ARGS) --target "$(CATALOG)"
+
+elt-test:
+	tests/elt.sh "$(CATALOG)"
