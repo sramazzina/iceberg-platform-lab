@@ -80,7 +80,9 @@ implementer stops and the user decides before the design changes.
 - `rest-fixture` (SQLite) locks under concurrent commits: the target `rest` has
   `threads: 1`.
 - Nessie returns only the snapshot of its current commit: the tests do not count
-  snapshots. They check the operation of the last snapshot (`append`, then `overwrite`).
+  snapshots. They check the operation of the last snapshot (`overwrite` for the first
+  build, a table replace; then `append` for the incremental merge, which adds only new
+  rows).
 
 ## 5. Architecture
 
