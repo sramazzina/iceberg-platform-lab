@@ -24,6 +24,18 @@ trap 'make -s tpch-clean CATALOG="$catalog" >/dev/null 2>&1 || echo "  warn - ma
 # value SQL: the single value of a query that returns concat('v=', ...).
 value() { spark_sql "$1" | sed -n 's/^v=//p'; }
 fct=$catalog.tpch_marts.fct_lineitem
+# assert_rows_match MESSAGE: both row counts must be numbers (empty values from failed queries
+# must not pass) and equal.
+assert_rows_match() {
+  local n_fct n_raw
+  n_fct=$(value "SELECT concat('v=', count(*)) FROM $fct")
+  n_raw=$(value "SELECT concat('v=', count(*)) FROM $catalog.tpch_raw.lineitem")
+  if [[ $n_fct =~ ^[0-9]+$ && $n_raw =~ ^[0-9]+$ ]]; then
+    assert_eq "$n_fct" "$n_raw" "$1"
+  else
+    fail "$1 (row count is not a number: fct='$n_fct', raw='$n_raw')"
+  fi
+}
 
 echo "elt $catalog"
 make -s tpch-gen SF=$sf >/dev/null 2>&1 || fail "make tpch-gen SF=$sf"
@@ -32,8 +44,7 @@ assert_not_contains "$out" "tpch-load failed" "make tpch-load UNTIL=$until"
 out=$(make -s dbt CATALOG="$catalog" ARGS=build 2>&1 || echo "dbt build failed")
 assert_contains "$out" "Completed successfully" "dbt build (models and tests)"
 assert_not_contains "$out" "dbt build failed" "dbt build exit code"
-assert_eq "$(value "SELECT concat('v=', count(*)) FROM $fct")" \
-  "$(value "SELECT concat('v=', count(*)) FROM $catalog.tpch_raw.lineitem")" "fct_lineitem has every raw line item"
+assert_rows_match "fct_lineitem has every raw line item"
 assert_eq "$(value "SELECT concat('v=', max(order_date) <= DATE'$until') FROM $fct")" "true" "fct_lineitem stops at $until"
 # last: the operation of the last snapshot of fct_lineitem. Do not count snapshots: Nessie
 # returns only the snapshot of its current commit (NOTES F7, S8).
@@ -45,8 +56,7 @@ assert_not_contains "$out" "tpch-load failed" "make tpch-load (full)"
 out=$(make -s dbt CATALOG="$catalog" ARGS=run 2>&1 || echo "dbt run failed")
 assert_contains "$out" "Completed successfully" "dbt run (incremental)"
 assert_not_contains "$out" "dbt run failed" "dbt run exit code"
-assert_eq "$(value "SELECT concat('v=', count(*)) FROM $fct")" \
-  "$(value "SELECT concat('v=', count(*)) FROM $catalog.tpch_raw.lineitem")" "fct_lineitem has every raw line item after the merge"
+assert_rows_match "fct_lineitem has every raw line item after the merge"
 assert_eq "$(value "SELECT concat('v=', count(*) = count(DISTINCT order_key, line_number)) FROM $fct")" "true" "the merge gives no duplicate key"
 assert_eq "$(last)" "append" "the incremental run merges into fct_lineitem (append: only new rows)"
 assert_eq "$(value "SELECT concat('v=', count(*)) FROM $catalog.tpch_marts.revenue_by_nation")" "25" "revenue_by_nation has 25 nations"

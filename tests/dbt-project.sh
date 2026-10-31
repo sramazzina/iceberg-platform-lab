@@ -20,7 +20,7 @@ for entry in nessie:nessie polaris:polaris rest-fixture:rest; do
   grep -qx "$service" <<<"$services" || continue
   if make -s dbt CATALOG="$catalog" ARGS=parse >/dev/null 2>&1; then pass "dbt parse --target $catalog"; else fail "dbt parse --target $catalog"; fi
   assert_contains "$(make -s dbt CATALOG="$catalog" ARGS=debug 2>&1)" "All checks passed!" "dbt debug --target $catalog connects to spark-thrift"
-  out=$(make -s dbt CATALOG="$catalog" ARGS="show --inline 'select current_catalog() as c' --output json" 2>&1)
+  out=$(make -s dbt CATALOG="$catalog" ARGS="show --inline 'select current_catalog() as c' --output json" 2>&1 || true)
   assert_contains "$out" "\"c\": \"$catalog\"" "the target $catalog selects the Spark catalog $catalog"
 done
 
