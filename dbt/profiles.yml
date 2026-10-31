@@ -1,0 +1,47 @@
+# dbt connection profiles (spec 2026-10-30-dbt-elt, section 6.5). No secret: the Spark
+# Thrift Server has no authentication (NOSASL; port on 127.0.0.1 only). One target per
+# catalog; no default target: make dbt passes --target. The session key sets the Spark
+# default catalog of each Thrift session (NOTES F7, S3).
+lab:
+  outputs:
+    polaris:
+      type: spark
+      method: thrift
+      host: spark-thrift
+      port: 10000
+      user: spark
+      auth: NOSASL
+      schema: tpch_staging
+      threads: 4
+      connect_retries: 3
+      connect_timeout: 10
+      server_side_parameters:
+        "set:hiveconf:spark.sql.defaultCatalog": polaris
+    nessie:
+      type: spark
+      method: thrift
+      host: spark-thrift
+      port: 10000
+      user: spark
+      auth: NOSASL
+      schema: tpch_staging
+      threads: 4
+      connect_retries: 3
+      connect_timeout: 10
+      server_side_parameters:
+        "set:hiveconf:spark.sql.defaultCatalog": nessie
+    rest:
+      type: spark
+      method: thrift
+      host: spark-thrift
+      port: 10000
+      user: spark
+      auth: NOSASL
+      schema: tpch_staging
+      # One thread: the SQLite database of rest-fixture locks under concurrent commits
+      # (NOTES F7, S8).
+      threads: 1
+      connect_retries: 3
+      connect_timeout: 10
+      server_side_parameters:
+        "set:hiveconf:spark.sql.defaultCatalog": rest

@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: stg_region
+    columns:
+      - name: region_key
+        data_tests: [unique, not_null]
+  - name: stg_nation
+    columns:
+      - name: nation_key
+        data_tests: [unique, not_null]
+  - name: stg_customer
+    columns:
+      - name: customer_key
+        data_tests: [unique, not_null]
+  - name: stg_orders
+    columns:
+      - name: order_key
+        data_tests: [unique, not_null]
+      - name: customer_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customer')
+                field: customer_key
+  - name: stg_lineitem
+    columns:
+      - name: order_key
+        data_tests: [not_null]
+      - name: line_number
+        data_tests: [not_null]
