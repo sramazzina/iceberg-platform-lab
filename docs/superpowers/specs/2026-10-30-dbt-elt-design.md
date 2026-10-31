@@ -206,7 +206,8 @@ New tests follow the style of `tests/*.sh` (`ok` / `FAIL` lines, non-zero exit o
    2. Check the row counts of `tpch_raw`; check that `fct_lineitem` has only rows with an
       order date up to 1996-12-31.
    3. `tpch-load` without `UNTIL`, `dbt run`. Check that `fct_lineitem` has the same row
-      count as `tpch_raw.lineitem`, and that the operation of its last snapshot is `overwrite` (a merge).
+      count as `tpch_raw.lineitem`, and that the operation of its last snapshot is `append`
+      (the merge adds only the new rows).
    4. `tpch-clean`. Check that no object is left under the S3 prefix of the catalog (same
       check as the smoke test for `polaris/`).
 3. Changes to existing tests:
