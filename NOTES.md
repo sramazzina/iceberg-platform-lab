@@ -104,6 +104,16 @@ Each entry: what the requirement says, what the lab does, and why.
   the storage (user decision, 2026-10-29).
 - Design: `docs/superpowers/specs/2026-10-29-rustfs-onprem-design.md`.
 
+### D16 — ELT with dbt and a Spark Thrift Server
+- Requirement: not in the original requirements; user request of 2026-10-30.
+- Lab: TPC-H data generated with DuckDB (`make tpch-gen`), loaded by PySpark into
+  `tpch_raw` (`make tpch-load`), transformed by one dbt project (`dbt/`) with one target per
+  catalog (`make dbt`). dbt-spark uses the `thrift` method with the new service
+  `spark-thrift` (profile `thrift`), which external JDBC clients also use.
+- Why: one generic project shows how each catalog keeps the tables of a pipeline. The
+  Thrift Server gives JDBC access (DBeaver); the `session` method does not.
+- Spec: `docs/superpowers/specs/2026-10-30-dbt-elt-design.md`. Findings: F7.
+
 ## Findings
 
 ### F1 — Nessie S3 credentials (Nessie 0.109.0, checked 2026-10-28)
@@ -236,6 +246,28 @@ All checks ran on the RustFS variant (local workstation, WSL2 with Docker Deskto
   fixture uses SQLite) and every commit then failed with `500 Unknown failure` until the
   `rest-fixture` container was restarted. After the restart, 2 threads worked on `rest`.
   On nessie, `m_incr.snapshots` has 1 row after two runs (polaris and rest: 2).
+
+### F8 — ELT pipeline on a Linux server (checked 2026-10-31)
+
+All checks ran on the RustFS variant, on a Linux server with Docker Engine 29.2.1.
+
+- The RustFS variant starts on Docker Engine: `rustfs-setup` exits with code 0.
+- Host port 9000 can be used by another stack on a shared server. Set `NESSIE_MGMT_PORT` in
+  `.env` to publish the Nessie management port on another host port.
+- `dbt debug` checks for `git`. The `spark` image installs `git` (GPL-2.0, a separate OS
+  package; see `VERSIONS.md`).
+- Snapshot operations of `fct_lineitem`: the first `dbt build` runs `create or replace table`
+  (operation `overwrite`). The incremental `dbt run` runs `merge into` with only new keys: it
+  adds files and deletes none (operation `append`). On nessie with `SF=0.01`: 45730 rows,
+  then 14445 rows added (60175).
+- beeline in non-interactive mode prints its prompt (`0: jdbc:hive2://…> `) in front of each
+  result value. Tests remove the prompt before they compare the value.
+- A test run that is stopped in the middle can leave objects under a `tpch_` prefix that no
+  catalog knows. `make tpch-clean` cannot see them, and the next test reports them. Remove
+  them with `aws s3 rm --recursive` on that prefix (from the `spark` container).
+- One `make dbt` run on nessie stopped for 12 minutes in the beeline call that creates the
+  namespace `default`. It did not occur again. `docker compose restart spark-thrift` released
+  it. The cause is not known.
 
 ## Open investigations
 
