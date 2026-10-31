@@ -268,6 +268,7 @@ All checks ran on the RustFS variant, on a Linux server with Docker Engine 29.2.
 - One `make dbt` run on nessie stopped for 12 minutes in the beeline call that creates the
   namespace `default`. It did not occur again. `docker compose restart spark-thrift` released
   it. The cause is not known.
+- `SF=1` on nessie, Linux server: gen 5 s, load 24 s, build 22 s, full load 20 s, run 19 s.
 
 ## Open investigations
 
