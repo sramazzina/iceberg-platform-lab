@@ -104,6 +104,16 @@ Each entry: what the requirement says, what the lab does, and why.
   the storage (user decision, 2026-10-29).
 - Design: `docs/superpowers/specs/2026-10-29-rustfs-onprem-design.md`.
 
+### D16 — ELT with dbt and a Spark Thrift Server
+- Requirement: not in the original requirements; user request of 2026-10-30.
+- Lab: TPC-H data generated with DuckDB (`make tpch-gen`), loaded by PySpark into
+  `tpch_raw` (`make tpch-load`), transformed by one dbt project (`dbt/`) with one target per
+  catalog (`make dbt`). dbt-spark uses the `thrift` method with the new service
+  `spark-thrift` (profile `thrift`), which external JDBC clients also use.
+- Why: one generic project shows how each catalog keeps the tables of a pipeline. The
+  Thrift Server gives JDBC access (DBeaver); the `session` method does not.
+- Spec: `docs/superpowers/specs/2026-10-30-dbt-elt-design.md`. Findings: F7, F8.
+
 ## Findings
 
 ### F1 — Nessie S3 credentials (Nessie 0.109.0, checked 2026-10-28)
@@ -205,9 +215,75 @@ Each entry: what the requirement says, what the lab does, and why.
 - `rustfs/rustfs#2766` (`DeleteObjects` and the bucket ARN) did not occur: `DROP TABLE ...
   PURGE` works on all catalogs.
 
+### F7 — Spark Thrift Server, dbt-spark and DuckDB (checked 2026-10-30)
+
+All checks ran on the RustFS variant (local workstation, WSL2 with Docker Desktop).
+
+- S1: the base image `apache/spark:4.1.3-scala2.13-java17-python3-ubuntu` has
+  `spark-hive-thriftserver_2.13-4.1.3.jar` and `bin/beeline`. Confirmed.
+- S2: `HiveThriftServer2` starts with the lab configuration (log line `HiveThriftServer2
+  started`, about 10 s). No `/tmp/metastore_db` was created: no Derby metastore in this setup.
+- S3: the session key `set:hiveconf:spark.sql.defaultCatalog` sets the default catalog of a
+  Thrift session. The key `spark.sql.defaultCatalog` (no prefix) is accepted but ignored
+  (`current_catalog()` stays `spark_catalog`). `use:database` does not set a catalog.
+  PyHive runs `USE default` when it opens a session. The `default` namespace must exist in the
+  selected catalog, or the connection fails with `SCHEMA_NOT_FOUND`. dbt-spark does not pass
+  the PyHive `database` argument.
+- S4: Iceberg views through the REST API: supported on polaris, nessie and rest (dbt `view`
+  model created, and read through a new session on all three). Polaris does not delete the
+  metadata file of a dropped view, and on AWS the lab role cannot delete it. For this reason
+  the staging models are tables on every catalog.
+- S5: DuckDB 1.5.6 `tpch`: `install_mode` is `NOT_INSTALLED`. The extension is not statically
+  linked. `INSTALL tpch` downloads it to `~/.duckdb/extensions/v1.5.6/linux_amd64/`. After the
+  install, `CALL dbgen(sf = 0.001)` works (`region` has 5 rows).
+- S6: authentication `NOSASL`: PyHive and Hive JDBC connect with user `spark`. With the
+  default authentication, beeline works but PyHive fails: `No module named 'thrift_sasl'`
+  (`dbt-spark[PyHive]==1.11.0` does not install `thrift_sasl`). Start the server with
+  `--hiveconf hive.server2.authentication=NOSASL`. Use `auth: NOSASL` in the dbt profile and
+  `jdbc:hive2://127.0.0.1:10000/;auth=noSasl` for beeline.
+- S7: `pip check` after the install of the dbt packages: `No broken requirements found.`
+- S8: dbt-spark 1.11.0 `table`, `view`, `incremental` (`merge`) with `+file_format: iceberg`:
+  `PASS=3` on two consecutive runs on polaris, nessie and rest (needs the `default`
+  namespace, see S3). Risk: on `rest` one run (2 threads) failed with `SQLITE_BUSY` (the
+  fixture uses SQLite) and every commit then failed with `500 Unknown failure` until the
+  `rest-fixture` container was restarted. After the restart, 2 threads worked on `rest`.
+  On nessie, `m_incr.snapshots` has 1 row after two runs (polaris and rest: 2).
+
+### F8 — ELT pipeline on a Linux server (checked 2026-10-31)
+
+All checks ran on the RustFS variant, on a Linux server with Docker Engine 29.2.1.
+
+- The RustFS variant starts on Docker Engine: `rustfs-setup` exits with code 0.
+- Host port 9000 can be used by another stack on a shared server. Set `NESSIE_MGMT_PORT` in
+  `.env` to publish the Nessie management port on another host port.
+- `dbt debug` checks for `git`. The `spark` image installs `git` (GPL-2.0, a separate OS
+  package; see `VERSIONS.md`).
+- Snapshot operations of `fct_lineitem`: the first `dbt build` runs `create or replace table`
+  (operation `overwrite`). The incremental `dbt run` runs `merge into` with only new keys: it
+  adds files and deletes none (operation `append`). On nessie with `SF=0.01`: 45730 rows,
+  then 14445 rows added (60175).
+- beeline in non-interactive mode prints its prompt (`0: jdbc:hive2://…> `) in front of each
+  result value. Tests remove the prompt before they compare the value.
+- A test run that is stopped in the middle can leave objects under a `tpch_` prefix that no
+  catalog knows. `make tpch-clean` cannot see them, and the next test reports them. Remove
+  them with `aws s3 rm --recursive` on that prefix (from the `spark` container).
+- beeline with `-e` waits for input when its stdin stays open: it connects, prints its prompt
+  and does not run the statement. `docker compose exec -T` forwards the stdin of the caller, so
+  a test run from a terminal stopped for hours in `tests/thrift-service.sh` (EC2 VM,
+  2026-11-03). The server thread waited for the next client message. Ctrl+D released it.
+  Reproduced on the Linux server: with an open stdin no result after 60 s; with `</dev/null`
+  the result in 1.3 s. Every beeline call (`Makefile` target `dbt`, `tests/thrift-service.sh`,
+  `tests/elt.sh`) reads stdin from `/dev/null`. One earlier `make dbt` run on nessie that
+  stopped for 12 minutes in the beeline call that creates the namespace `default` probably
+  had the same cause.
+- `SF=1` on nessie, Linux server: gen 5 s, load 24 s, build 22 s, full load 20 s, run 19 s.
+- `make elt-test` (`SF=0.01`), total time. Linux server with RustFS: nessie ~3 min, polaris
+  ~5 min, rest ~3 min. AWS stack on the EC2 VM (2026-11-03, after the beeline fix): nessie
+  6 min 55 s, polaris 9 min 32 s, rest 7 min 40 s.
+
 ## Open investigations
 
 Filled in during the later phases.
 
-- Not verified: the RustFS variant on Linux with Docker Engine and on macOS. The variant is
-  verified on Windows (WSL2) with Docker Desktop.
+- Not verified: the RustFS variant on macOS. The variant is verified on Windows (WSL2) with
+  Docker Desktop and on Linux with Docker Engine (F8).

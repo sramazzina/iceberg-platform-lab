@@ -4,3 +4,6 @@
 secrets/
 *:Zone.Identifier
 /data/
+/landing/
+/dbt/target/
+/dbt/logs/

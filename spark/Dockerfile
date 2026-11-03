@@ -6,7 +6,7 @@ FROM ${SPARK_BASE_IMAGE}
 USER root
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl unzip \
+ && apt-get install -y --no-install-recommends curl git unzip \
  && rm -rf /var/lib/apt/lists/*
 
 # Iceberg jars from Maven Central, checked against the pinned SHA-1.
@@ -66,5 +66,7 @@ COPY entrypoint.sh /usr/local/bin/lab-entrypoint.sh
 
 USER spark
 WORKDIR /workspace
+# DuckDB tpch extension (not bundled in the wheel): install it at build time (NOTES F7, S5).
+RUN python3 -c "import duckdb; duckdb.connect().execute('INSTALL tpch')"
 EXPOSE 8888 4040
 ENTRYPOINT ["/usr/local/bin/lab-entrypoint.sh"]

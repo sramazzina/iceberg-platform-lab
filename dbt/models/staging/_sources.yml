@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: tpch_raw
+    description: TPC-H tables loaded by make tpch-load (elt/tpch_load.py).
+    schema: tpch_raw
+    tables:
+      - name: region
+      - name: nation
+      - name: customer
+      - name: orders
+      - name: lineitem

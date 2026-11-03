@@ -164,6 +164,11 @@ with each catalog.
 | `make logs` | Shows the logs of the running services |
 | `make lint` | Static checks: script syntax, JSON, Compose file, no secret in tracked files |
 | `make test-aws` | Tests the AWS scripts against a stub AWS CLI (no AWS access) |
+| `make tpch-gen SF=<n>` | Generates the TPC-H tables as Parquet files in `landing/tpch/sf<n>/` (default `SF=1`) |
+| `make tpch-load CATALOG=<c> SF=<n> [UNTIL=<date>]` | Loads the Parquet files into `<c>.tpch_raw` |
+| `make dbt CATALOG=<c> ARGS="<dbt arguments>"` | Runs dbt on the catalog `<c>` (needs the profile `thrift`) |
+| `make tpch-clean CATALOG=<c>` | Drops `tpch_raw`, `tpch_staging`, `tpch_marts` of `<c>`, files included |
+| `make elt-test CATALOG=<c>` | Runs the end-to-end ELT test on `<c>` (small scale) |
 
 ## Access from your machine
 
@@ -176,12 +181,15 @@ tunnel instead.
 | JupyterLab (asks for `JUPYTER_TOKEN` from `.env`) | 8888 | <http://localhost:8888> |
 | Spark UI (only while a Spark session runs) | 4040 | <http://localhost:4040> |
 | Nessie API | 19120 | <http://localhost:19120/api/v2/trees> |
-| Nessie management (health) | 9000 | <http://localhost:9000/q/health/ready> |
+| Nessie management (health) | `NESSIE_MGMT_PORT` (default 9000) | <http://localhost:9000/q/health/ready> |
 | Polaris API (needs a token) | 8181 | <http://localhost:8181/api/management/v1/catalogs> |
 | Polaris management (health) | 8182 | <http://localhost:8182/q/health/ready> |
 | Baseline REST catalog (no authentication) | 8183 | <http://localhost:8183/v1/config> |
+| Spark Thrift Server (JDBC, no authentication; profile `thrift`) | 10000 | `jdbc:hive2://localhost:10000/;auth=noSasl` |
 
 A catalog port answers only when the catalog is on (`COMPOSE_PROFILES`).
+If host port 9000 is in use, set `NESSIE_MGMT_PORT` in `.env` and run `make up`.
+Use that port in the address of the table.
 
 ### SSH tunnel
 
@@ -194,10 +202,11 @@ A catalog port answers only when the catalog is on (`COMPOSE_PROFILES`).
      -L 8888:127.0.0.1:8888 \
      -L 4040:127.0.0.1:4040 \
      -L 19120:127.0.0.1:19120 \
-     -L 9000:127.0.0.1:9000 \
+     -L 9000:127.0.0.1:<NESSIE_MGMT_PORT> \
      -L 8181:127.0.0.1:8181 \
      -L 8182:127.0.0.1:8182 \
      -L 8183:127.0.0.1:8183 \
+     -L 10000:127.0.0.1:10000 \
      admin@<vm-public-ip>
    ```
 
@@ -205,8 +214,8 @@ A catalog port answers only when the catalog is on (`COMPOSE_PROFILES`).
 4. Open the addresses of the table in your browser.
 
 If a port is already in use on your machine, change only the first number. For example,
-`-L 19000:127.0.0.1:9000` makes the Nessie management port available on
-<http://localhost:19000>.
+`-L 19000:127.0.0.1:<NESSIE_MGMT_PORT>` makes the Nessie management port available on
+<http://localhost:19000>. Replace `<NESSIE_MGMT_PORT>` with its value (default 9000).
 
 ### SSM port forwarding
 
@@ -221,7 +230,7 @@ Session Manager plugin must be installed on your machine.
      --parameters '{"portNumber":["8888"],"localPortNumber":["8888"]}'
    ```
 
-2. Repeat the command in a new terminal for each other port (4040, 19120, 9000, 8181, 8182, 8183).
+2. Repeat the command in a new terminal for each other port (4040, 19120, 9000, 8181, 8182, 8183, 10000).
 
 ## Stop and clean up
 
@@ -251,12 +260,117 @@ Session Manager plugin must be installed on your machine.
 | `rustfs` is not healthy, and `ls -ld data/rustfs` shows the owner `root` | Docker created the data directory as root, because the stack was started without `make up` | Run `sudo chown $(id -u) data/rustfs` (or the `RUSTFS_DATA_DIR` directory), then `make up` |
 | A service is not healthy after `make up` | A service did not start | Run `docker compose ps -a`, then `docker compose logs <service>` |
 
+## ELT with dbt
+
+The lab has a minimal ELT pipeline on TPC-H data:
+
+- **EL:** `make tpch-load` loads Parquet files from `landing/` into the namespace
+  `tpch_raw` of a catalog (PySpark).
+- **T:** a dbt project (`dbt/`) builds `tpch_staging` (tables) and
+  `tpch_marts` (tables) in the same catalog.
+
+The dbt project does not depend on the catalog. The target selects it: `polaris`, `nessie`
+or `rest`. dbt runs in the `spark` container and sends SQL to the Spark Thrift Server
+(service `spark-thrift`, profile `thrift`).
+
+`make up` loads no data. The data loads only on demand, with `make tpch-gen` and
+`make tpch-load`. Only the tests load a small data set (`SF=0.01`), and they drop it at
+the end.
+
+### Run the pipeline
+
+1. Add `thrift` and the catalog to `COMPOSE_PROFILES` in `.env`, for example
+   `COMPOSE_PROFILES=nessie,thrift`.
+2. Start the stack:
+
+   ```bash
+   make up
+   ```
+
+3. Generate the data. `SF` is the TPC-H scale factor: `SF=1` is about 1 GB of raw data,
+   6 million rows in `lineitem`. The files go to `landing/tpch/sf1/` (git-ignored).
+
+   ```bash
+   make tpch-gen SF=1
+   ```
+
+4. Load the orders up to the end of 1996:
+
+   ```bash
+   make tpch-load CATALOG=nessie SF=1 UNTIL=1996-12-31
+   ```
+
+5. Build the models and run the dbt tests:
+
+   ```bash
+   make dbt CATALOG=nessie ARGS=build
+   ```
+
+6. Load all the data:
+
+   ```bash
+   make tpch-load CATALOG=nessie SF=1
+   ```
+
+7. Run the models again. The incremental model `tpch_marts.fct_lineitem` merges only the
+   line items of the new orders: its last snapshot is an `append`. The first
+   `make dbt ... ARGS=build` replaces the table: that snapshot is an `overwrite`. Polaris
+   and `rest` keep the snapshot history. Nessie keeps the history in its commit log and
+   shows only the snapshot of the current commit.
+
+   ```bash
+   make dbt CATALOG=nessie ARGS=run
+   ```
+
+8. Remove the tables of the pipeline. The Parquet files in `landing/` stay; delete the
+   directory `landing/tpch/` to remove them.
+
+   ```bash
+   make tpch-clean CATALOG=nessie
+   ```
+
+   `make tpch-clean` keeps the empty namespace `default` that `make dbt` creates (it has no
+   file in S3).
+
+For another catalog, use `CATALOG=polaris` or `CATALOG=rest`. `SF=1` is verified; larger
+scale factors are not verified (the Thrift Server has `spark.driver.memory 4g`).
+
+### Connect a JDBC client (DBeaver)
+
+The Spark Thrift Server speaks the HiveServer2 protocol. It has **no authentication**; the
+port is published on `127.0.0.1` of the VM only. Any user or process on the VM can connect
+and run SQL with the credentials of the lab, and can read the files that the container can
+read. Start the profile `thrift` only on a host that you do not share, and stop it when you
+do not use it.
+
+1. Start the stack with the profile `thrift` (see [Run the pipeline](#run-the-pipeline)).
+2. On a remote VM, open the tunnel for port 10000 (see [SSH tunnel](#ssh-tunnel)).
+3. In DBeaver, create a connection of type **Apache Hive** (DBeaver downloads the driver).
+4. Set the JDBC URL to `jdbc:hive2://localhost:10000/;auth=noSasl`, user `spark`, no
+   password.
+5. Open an SQL editor on the connection. The database navigator of DBeaver does not show
+   the Iceberg tables: it shows only the schemas `default` and `global_temp` of the Spark
+   session catalog, and they are empty. The Thrift Server gives the JDBC metadata
+   (`getSchemas`, `getTables`) of the session catalog only, not of the Iceberg catalogs.
+6. Use SQL to find the tables:
+   ```sql
+   SHOW NAMESPACES IN nessie;
+   SHOW TABLES IN nessie.tpch_marts;
+   ```
+7. Use three-part names: `SELECT * FROM nessie.tpch_marts.revenue_by_nation`. Each catalog
+   that is on is available.
+8. Optional: to select a default catalog, add it to the URL after a semicolon:
+   `jdbc:hive2://localhost:10000/;auth=noSasl;?spark.sql.defaultCatalog=nessie`. Then
+   `SELECT * FROM tpch_marts.revenue_by_nation` works. Do not remove the semicolon in front
+   of `?`: without it the driver does not read `auth=noSasl`, and the server closes the
+   connection. The catalog must have the namespace `default` (`make dbt` creates it).
+
 ## On-premise with RustFS
 
 The lab can run on a PC or on an on-premise server without AWS. RustFS replaces AWS S3: it
 gives the S3 API and STS, and it keeps the data in a local directory. All catalogs work, and
 Polaris vends credentials through the RustFS STS, as on AWS. Verified on Windows (WSL2) with
-Docker Desktop. Not verified on Linux with Docker Engine and on macOS.
+Docker Desktop and on Linux with Docker Engine. Not verified on macOS.
 
 The variant has its own state: the Postgres volume `pgdata-rustfs`, the `rest` catalog
 volume `rest-fixture-data-rustfs` and `secrets/rustfs/`. The state of the AWS stack stays

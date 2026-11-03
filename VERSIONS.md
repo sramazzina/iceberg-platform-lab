@@ -27,8 +27,24 @@ The tag `latest` is never used.
 | pandas | 2.3.3 (last release for Python 3.10) | `spark/requirements.txt` | <https://pypi.org/project/pandas/2.3.3/> |
 | pyarrow | 25.0.1 (last release for Python 3.10) | `spark/requirements.txt` | <https://pypi.org/project/pyarrow/25.0.1/> |
 | requests | 2.34.2 | `spark/requirements.txt` | <https://pypi.org/project/requests/2.34.2/> |
+| dbt-core | 1.12.6 (Apache-2.0) | `spark/requirements.txt` | <https://pypi.org/project/dbt-core/1.12.6/> |
+| dbt-spark | 1.11.0 (Apache-2.0), extra `PyHive` | `spark/requirements.txt` | <https://pypi.org/project/dbt-spark/1.11.0/> |
+| PyHive | 0.7.0 (Apache-2.0) | `spark/requirements.txt` | <https://pypi.org/project/PyHive/0.7.0/> |
+| thrift | 0.22.0 (Apache-2.0; dbt-spark 1.11.0 needs < 0.23.0) | `spark/requirements.txt` | <https://pypi.org/project/thrift/0.22.0/> |
+| DuckDB | 1.5.6 (MIT; 2.0.0 needs Python 3.11) | `spark/requirements.txt` | <https://pypi.org/project/duckdb/1.5.6/> |
 
 RustFS and `rc` were verified on 2026-10-29 (on-premise variant).
+
+The dbt and DuckDB packages were verified on 2026-10-30. Their dependencies are permissive
+(Apache-2.0, MIT, BSD, ISC, PSF, MPL-2.0), with one exception: `text-unidecode` 1.3 (from
+`dbt-core` through `python-slugify`) has the dual license Artistic License or GPLv2+. The
+lab uses it under the Artistic License (user decision, 2026-10-30). The DuckDB `tpch`
+extension is downloaded at image build time (`spark/Dockerfile`); DuckDB checks its
+signature.
+
+`git` is an OS package (Ubuntu repositories, through the Spark base image; no pin). Its license
+is GPL-2.0. The lab accepts it (user decision, 2026-10-31): it is a separate binary, used only
+by `dbt debug` and `dbt deps`, and it is not linked into the project.
 
 ## Compatibility
 
