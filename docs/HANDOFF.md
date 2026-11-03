@@ -2,7 +2,7 @@
 
 - Date: 2026-11-03
 - From: Claude Code session on the Linux server (Docker Engine, RustFS variant): user checks
-  of issue #47 (AWS regression and DBeaver), fixes on PR #49
+  of issue #47 (AWS regression and DBeaver), fixes on PR #49, merge of PR #49
 - To: the next Claude Code session (Linux server or workstation)
 
 ## Where we are
@@ -11,12 +11,12 @@
 |---|---|
 | Requirements | `docs/req/prompt-agente-lab-iceberg-polaris-nessie.md` (Italian) |
 | Lab design spec | `docs/superpowers/specs/2026-10-28-iceberg-catalog-lab-design.md` |
-| Stage 1, Phases 1-4, Nessie CLI, RustFS variant | Merged (PRs #10, #11, #16, #23, #27, #30, #32, #39) |
+| Stage 1, Phases 1-4, Nessie CLI, RustFS variant, ELT with dbt | Merged (PRs #10, #11, #16, #23, #27, #30, #32, #39, #49) |
 | Phase 5 (scenarios), Phase 6 (evaluation) | Deferred (`NOTES.md` D14) |
-| **ELT with dbt** | **PR #49 open, ready for the merge** (branch `feat/dbt-elt`, pushed, head `0507a1d`). Not merged |
+| ELT with dbt | Merged (PR #49, merge commit `72b81ca`, 2026-11-03). Branch `feat/dbt-elt` deleted (local and remote); SDD workspace deleted |
 | dbt spec | `docs/superpowers/specs/2026-10-30-dbt-elt-design.md` |
 | dbt plan | `docs/superpowers/plans/2026-10-30-dbt-elt.md` — Tasks 29-36, all done |
-| GitHub issues | #40 … #48 all ticked (#47 included). #50 open (analysis, next session) |
+| GitHub issues | #40 … #48 closed, all checklists ticked. #50 open (analysis, next session) |
 | CI | The repository has no GitHub Actions workflow |
 
 Checks of 2026-11-03:
@@ -27,7 +27,7 @@ Checks of 2026-11-03:
 - Linux server (Claude): `make lint`, `tests/thrift-service.sh` with an open stdin, and
   `make elt-test` on nessie, polaris and rest with the new check passed.
 
-Fixes on `feat/dbt-elt` (2026-11-03):
+Fixes of 2026-11-03 (in PR #49):
 - `c671a0f`: beeline with `-e` waits for input when its stdin stays open, and
   `docker compose exec -T` forwards the stdin of the terminal. The AWS run stopped for hours in
   `tests/thrift-service.sh`. Every beeline call reads stdin from `/dev/null` (`NOTES.md` F8).
@@ -39,11 +39,8 @@ Fixes on `feat/dbt-elt` (2026-11-03):
 
 ## Resume here
 
-1. The user merges PR #49. Never merge yourself.
-2. After the user confirms the merge: `git checkout main && git pull`,
-   `git branch -d feat/dbt-elt`, `git push origin --delete feat/dbt-elt`,
-   `rm -rf .superpowers/sdd/2026-10-30-dbt-elt`, then update this file.
-3. Next goal proposed by the user: issue #50, analysis of how the DBeaver navigator can show
+1. No work is in progress.
+2. Next goal proposed by the user: issue #50, analysis of how the DBeaver navigator can show
    the Iceberg catalogs. Analysis only; agree the approach with the user before any change.
    Brainstorm with `superpowers:brainstorming`.
 
@@ -56,8 +53,6 @@ Fixes on `feat/dbt-elt` (2026-11-03):
 - Remote `origin` uses SSH (`git@github.com:...`): git has no HTTPS credentials here.
 - The server runs Docker stacks of other projects: touch only the project `iceberg-lab`.
 - Do not modify `~/.docker/config.json` (it has a stale `ghcr.io` login).
-- SDD workspace of the ELT plan: `.superpowers/sdd/2026-10-30-dbt-elt/` (ledger
-  `progress.md`). Delete it after the merge.
 
 ## State of the workstation
 
@@ -66,16 +61,15 @@ Fixes on `feat/dbt-elt` (2026-11-03):
 
 ## State of the EC2 VM
 
-- On branch `feat/dbt-elt`. After the merge: `git checkout main && git pull`, then
-  `git branch -D feat/dbt-elt`.
+- On the deleted branch `feat/dbt-elt`. At the next use: `git checkout main && git pull`,
+  then `git branch -D feat/dbt-elt`.
 - The stack runs with the `.env` selection. No `tpch_` data is left (cleaned by the user).
 - The files `thrift-dump.txt` and `beeline-dump.txt` (thread dumps of the debug session) can
   be in the repository directory, untracked. The user can delete them.
 - The VM role can only **list** under `polaris/`: drop every Polaris table with
   `DROP TABLE ... PURGE`; a left file must be deleted by the user from CloudShell.
 - SSH tunnel from Windows: the key file must be readable only by the user (`icacls … /inheritance:r`,
-  then `/grant:r "$(whoami):(R)"`). The README on `main` lacks `-L 10000:...` until PR #49 is
-  merged.
+  then `/grant:r "$(whoami):(R)"`). The tunnel command of the README includes `-L 10000:...`.
 
 ## Decisions already taken with the user (do not ask again)
 
@@ -135,6 +129,6 @@ Fixes on `feat/dbt-elt` (2026-11-03):
 ## Kick-off prompt for the next session
 
 ```text
-Read docs/HANDOFF.md (on main). Follow "Resume here": PR #49 (dbt ELT) is ready for the
-merge; then issue #50 (DBeaver navigator analysis).
+Read docs/HANDOFF.md (on main). PR #49 (dbt ELT) is merged. Follow "Resume here":
+issue #50 (DBeaver navigator analysis).
 ```
