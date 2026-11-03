@@ -62,9 +62,10 @@ assert_eq "$(last)" "append" "the incremental run merges into fct_lineitem (appe
 assert_eq "$(value "SELECT concat('v=', count(*)) FROM $catalog.tpch_marts.revenue_by_nation")" "25" "revenue_by_nation has 25 nations"
 assert_eq "$(value "SELECT concat('v=', count(*) > 0) FROM $catalog.tpch_staging.stg_orders")" "true" "a staging model reads from another Spark application"
 
+# </dev/null: with an open stdin (a terminal), beeline waits for input (NOTES F8).
 jdbc=$(docker compose exec -T spark-thrift beeline -u 'jdbc:hive2://127.0.0.1:10000/;auth=noSasl' -n spark \
   --silent=true --showHeader=false --outputformat=tsv2 \
-  -e "SELECT count(*) FROM $catalog.tpch_marts.revenue_by_nation" 2>&1 || echo "beeline failed")
+  -e "SELECT count(*) FROM $catalog.tpch_marts.revenue_by_nation" </dev/null 2>&1 || echo "beeline failed")
 # beeline prints its prompt in front of the value in non-interactive mode.
 assert_eq "$(grep -Ex '(0: jdbc:[^>]*> )?25' <<<"$jdbc" | sed 's/^.*> //' || true)" "25" "a JDBC client reads the mart with its three-part name"
 

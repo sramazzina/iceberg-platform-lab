@@ -62,9 +62,10 @@ tpch-load: elt-require
 tpch-clean: elt-require
 	docker compose exec -T spark spark-submit /workspace/elt/tpch_clean.py "$(CATALOG)"
 
+# </dev/null: with an open stdin (a terminal), beeline waits for input and does not run -e (NOTES F8).
 dbt:
 	elt/require.sh "$(CATALOG)" thrift
-	docker compose exec -T spark-thrift beeline -u 'jdbc:hive2://127.0.0.1:10000/;auth=noSasl' -n spark --silent=true -e "CREATE NAMESPACE IF NOT EXISTS $(CATALOG).default" >/dev/null
+	docker compose exec -T spark-thrift beeline -u 'jdbc:hive2://127.0.0.1:10000/;auth=noSasl' -n spark --silent=true -e "CREATE NAMESPACE IF NOT EXISTS $(CATALOG).default" </dev/null >/dev/null
 	docker compose exec -T -w /workspace/dbt spark dbt $(ARGS) --target "$(CATALOG)"
 
 elt-test:

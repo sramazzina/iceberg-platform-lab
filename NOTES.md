@@ -267,9 +267,15 @@ All checks ran on the RustFS variant, on a Linux server with Docker Engine 29.2.
 - A test run that is stopped in the middle can leave objects under a `tpch_` prefix that no
   catalog knows. `make tpch-clean` cannot see them, and the next test reports them. Remove
   them with `aws s3 rm --recursive` on that prefix (from the `spark` container).
-- One `make dbt` run on nessie stopped for 12 minutes in the beeline call that creates the
-  namespace `default`. It did not occur again. `docker compose restart spark-thrift` released
-  it. The cause is not known.
+- beeline with `-e` waits for input when its stdin stays open: it connects, prints its prompt
+  and does not run the statement. `docker compose exec -T` forwards the stdin of the caller, so
+  a test run from a terminal stopped for hours in `tests/thrift-service.sh` (EC2 VM,
+  2026-11-03). The server thread waited for the next client message. Ctrl+D released it.
+  Reproduced on the Linux server: with an open stdin no result after 60 s; with `</dev/null`
+  the result in 1.3 s. Every beeline call (`Makefile` target `dbt`, `tests/thrift-service.sh`,
+  `tests/elt.sh`) reads stdin from `/dev/null`. One earlier `make dbt` run on nessie that
+  stopped for 12 minutes in the beeline call that creates the namespace `default` probably
+  had the same cause.
 - `SF=1` on nessie, Linux server: gen 5 s, load 24 s, build 22 s, full load 20 s, run 19 s.
 
 ## Open investigations

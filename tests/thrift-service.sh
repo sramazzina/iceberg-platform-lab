@@ -10,9 +10,10 @@ cd "$ROOT"
 # jdbc SQL: runs SQL with beeline (Hive JDBC driver) in the spark-thrift container.
 # Prints the result rows without header; prints "beeline failed" on a non-zero exit.
 # Beeline prefixes the first output line with its prompt ("0: jdbc:hive2://...> "): sed removes it.
+# </dev/null: with an open stdin (a terminal), beeline waits for input and does not run -e (NOTES F8).
 jdbc() {
   docker compose exec -T spark-thrift beeline -u 'jdbc:hive2://127.0.0.1:10000/;auth=noSasl' -n spark \
-    --silent=true --showHeader=false --outputformat=tsv2 -e "$1" 2>&1 | sed 's/^[0-9]*: jdbc:hive2:[^>]*> //' \
+    --silent=true --showHeader=false --outputformat=tsv2 -e "$1" </dev/null 2>&1 | sed 's/^[0-9]*: jdbc:hive2:[^>]*> //' \
     || echo "beeline failed"
 }
 
