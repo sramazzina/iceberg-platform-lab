@@ -277,6 +277,9 @@ All checks ran on the RustFS variant, on a Linux server with Docker Engine 29.2.
   stopped for 12 minutes in the beeline call that creates the namespace `default` probably
   had the same cause.
 - `SF=1` on nessie, Linux server: gen 5 s, load 24 s, build 22 s, full load 20 s, run 19 s.
+- `make elt-test` (`SF=0.01`), total time. Linux server with RustFS: nessie ~3 min, polaris
+  ~5 min, rest ~3 min. AWS stack on the EC2 VM (2026-11-03, after the beeline fix): nessie
+  6 min 55 s, polaris 9 min 32 s, rest 7 min 40 s.
 
 ## Open investigations
 
