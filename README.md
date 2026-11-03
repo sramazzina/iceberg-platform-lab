@@ -348,10 +348,22 @@ do not use it.
 3. In DBeaver, create a connection of type **Apache Hive** (DBeaver downloads the driver).
 4. Set the JDBC URL to `jdbc:hive2://localhost:10000/;auth=noSasl`, user `spark`, no
    password.
-5. Use three-part names: `SELECT * FROM nessie.tpch_marts.revenue_by_nation`. Each catalog
-   that is on is available. To select a default catalog, add it to the URL:
-   `jdbc:hive2://localhost:10000/;auth=noSasl?spark.sql.defaultCatalog=nessie`. The
-   catalog must have the namespace `default` (`make dbt` creates it).
+5. Open an SQL editor on the connection. The database navigator of DBeaver does not show
+   the Iceberg tables: it shows only the schemas `default` and `global_temp` of the Spark
+   session catalog, and they are empty. The Thrift Server gives the JDBC metadata
+   (`getSchemas`, `getTables`) of the session catalog only, not of the Iceberg catalogs.
+6. Use SQL to find the tables:
+   ```sql
+   SHOW NAMESPACES IN nessie;
+   SHOW TABLES IN nessie.tpch_marts;
+   ```
+7. Use three-part names: `SELECT * FROM nessie.tpch_marts.revenue_by_nation`. Each catalog
+   that is on is available.
+8. Optional: to select a default catalog, add it to the URL after a semicolon:
+   `jdbc:hive2://localhost:10000/;auth=noSasl;?spark.sql.defaultCatalog=nessie`. Then
+   `SELECT * FROM tpch_marts.revenue_by_nation` works. Do not remove the semicolon in front
+   of `?`: without it the driver does not read `auth=noSasl`, and the server closes the
+   connection. The catalog must have the namespace `default` (`make dbt` creates it).
 
 ## On-premise with RustFS
 

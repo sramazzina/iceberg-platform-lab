@@ -68,6 +68,12 @@ jdbc=$(docker compose exec -T spark-thrift beeline -u 'jdbc:hive2://127.0.0.1:10
   -e "SELECT count(*) FROM $catalog.tpch_marts.revenue_by_nation" </dev/null 2>&1 || echo "beeline failed")
 # beeline prints its prompt in front of the value in non-interactive mode.
 assert_eq "$(grep -Ex '(0: jdbc:[^>]*> )?25' <<<"$jdbc" | sed 's/^.*> //' || true)" "25" "a JDBC client reads the mart with its three-part name"
+# The URL of the README with a default catalog: the semicolon in front of "?" is required.
+jdbc=$(docker compose exec -T spark-thrift beeline \
+  -u "jdbc:hive2://127.0.0.1:10000/;auth=noSasl;?spark.sql.defaultCatalog=$catalog" -n spark \
+  --silent=true --showHeader=false --outputformat=tsv2 \
+  -e "SELECT count(*) FROM tpch_marts.revenue_by_nation" </dev/null 2>&1 || echo "beeline failed")
+assert_eq "$(grep -Ex '(0: jdbc:[^>]*> )?25' <<<"$jdbc" | sed 's/^.*> //' || true)" "25" "a JDBC client with spark.sql.defaultCatalog reads the mart with a two-part name"
 
 out=$(make -s tpch-clean CATALOG="$catalog" 2>&1 || echo "tpch-clean failed")
 assert_not_contains "$out" "tpch-clean failed" "make tpch-clean"
