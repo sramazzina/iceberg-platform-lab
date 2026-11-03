@@ -99,6 +99,10 @@ Fixes of 2026-11-03 (in PR #49):
 - Do not push after every commit. Push the batch when the PR is ready; open the PR last. The
   user merges; never merge yourself.
 - Chat with the user in Italian; every file, commit, issue and PR in English (ASD-STE100).
+- Labels of new issues (created 2026-11-03): one `priority: high|medium|low`; the type
+  (`bug`, `enhancement`, `documentation` or `analysis`); one or more `area: catalogs|storage|
+  spark|elt|aws|release`; `needs: user` when the issue waits for a check of the user;
+  `blocked` when it cannot continue.
 
 ## Rules for work in every session
 
