@@ -61,11 +61,8 @@ Fixes of 2026-11-03 (in PR #49):
 
 ## State of the EC2 VM
 
-- On the deleted branch `feat/dbt-elt`. At the next use: `git checkout main && git pull`,
-  then `git branch -D feat/dbt-elt`.
+- On `main`, up to date; branch `feat/dbt-elt` deleted (2026-11-03).
 - The stack runs with the `.env` selection. No `tpch_` data is left (cleaned by the user).
-- The files `thrift-dump.txt` and `beeline-dump.txt` (thread dumps of the debug session) can
-  be in the repository directory, untracked. The user can delete them.
 - The VM role can only **list** under `polaris/`: drop every Polaris table with
   `DROP TABLE ... PURGE`; a left file must be deleted by the user from CloudShell.
 - SSH tunnel from Windows: the key file must be readable only by the user (`icacls … /inheritance:r`,
