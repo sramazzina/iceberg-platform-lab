@@ -115,6 +115,9 @@ Fixes of 2026-11-03 (in PR #49):
 ## Open points to watch
 
 - Issue #50: DBeaver navigator and the Iceberg catalogs (analysis).
+- Issue #51 (low priority): analysis of a distributable release. Findings of the brainstorming
+  of 2026-11-03 and the licence inventory of the `spark` image are in the issue. Decision of
+  2026-11-03: no release for now (internal use by the user and the team); keep `git` in the image.
 - Issue #47 has a comment with the old procedure (step 0 without `COMPOSE_PROFILES`). An edit
   of the comment was blocked by the permission mode; the procedure is no longer needed.
 - `rustfs-setup` is verified only for a second run with the same values.
