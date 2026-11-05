@@ -2,7 +2,8 @@
 
 - Date: 2026-11-05
 - From: Claude Code session on the workstation (WSL2, Docker Desktop, RustFS variant):
-  local setup for study, repository rename, issue #52
+  local setup for study, repository rename, issue #52, Power BI analysis (#53), root cause
+  of #50
 - To: the next Claude Code session (Linux server, workstation or EC2 VM)
 
 ## Where we are
@@ -16,7 +17,7 @@
 | ELT with dbt | Merged (PR #49, merge commit `72b81ca`, 2026-11-03). Branch `feat/dbt-elt` deleted (local and remote); SDD workspace deleted |
 | dbt spec | `docs/superpowers/specs/2026-10-30-dbt-elt-design.md` |
 | dbt plan | `docs/superpowers/plans/2026-10-30-dbt-elt.md` — Tasks 29-36, all done |
-| GitHub issues | #40 … #48 closed, all checklists ticked. #50 open (analysis). #51 open (low priority). #52 open (Python upgrade) |
+| GitHub issues | #40 … #48 closed, all checklists ticked. #50 open (analysis). #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done) |
 | Repository name | `sramazzina/iceberg-platform-lab` since 2026-11-05 (was `iceberg-platform-poc`; GitHub redirects the old name) |
 | CI | The repository has no GitHub Actions workflow |
 
@@ -49,15 +50,38 @@ Changes of 2026-11-05 (workstation):
   `sramazzina/dbt-lab-iceberg` (public). It connects through the Spark Thrift Server
   (`localhost:10000`, `auth: NOSASL`, `set:hiveconf:spark.sql.defaultCatalog`). It is not
   part of this repository.
+- Issue #53 (`analysis`, `priority: low`): how Power BI Desktop and Power BI Service (lab
+  tenant, on-premises data gateway, no Fabric capacity) can connect to the Iceberg tables.
+  Documentation only, observation only (the user asked for no recommendation). Two
+  approaches: (1) Spark Thrift Server + native Spark connector; (2) Trino 484 on the Iceberg
+  REST catalogs + Starburst connector. Findings in three comments (approach 1, approach 2,
+  side-by-side summary); checklist ticked. Open points need tests in Power BI Desktop and
+  through a gateway (7 for approach 1, 10 for approach 2). The user sent a summary of the two
+  approaches to a customer with an architecture like the lab (no Dremio).
+- Issue #50, root cause (read in the source, not run): in Spark 4.1 the Thrift Server JDBC
+  metadata operations (`SparkGetSchemasOperation`, `SparkGetTablesOperation`,
+  `SparkGetColumnsOperation`) read only the V1 `SessionCatalog` (`spark_catalog`); the lab
+  Iceberg catalogs are DataSource V2 catalog plugins, so they never appear in a navigator
+  (DBeaver, Power BI). `spark.sql.defaultCatalog` does not change this. Spark 4.3 adds
+  `spark.sql.thriftServer.catalogMetadata.enabled` (default `false`): schemas only, tables and
+  columns still from `spark_catalog` (SPARK-57518, follow-up PR #57468 open). Open point in
+  #50: Iceberg `SparkSessionCatalog` as `spark_catalog` (the source indicates it does not help;
+  a test is described in the issue).
+- Terminology agreed with the user: "V1"/"V2" catalogs = generations of the Spark catalog API,
+  not Iceberg format versions. Say so explicitly in every text.
 
 ## Resume here
 
 0. On every machine with an old clone (Linux server, EC2 VM), do the rename steps in
    "Rename of the clone" below before any other work.
 1. No work is in progress.
-2. Next goal proposed by the user: issue #50, analysis of how the DBeaver navigator can show
-   the Iceberg catalogs. Analysis only; agree the approach with the user before any change.
-   Brainstorm with `superpowers:brainstorming`.
+2. Candidate goals, to choose with the user:
+   - issue #50: the root cause is known (see above); decide with the user what to do (keep the
+     three-part-name workaround, test `SparkSessionCatalog`, another SQL engine, or wait for
+     Spark upstream). Analysis only until the user decides;
+   - issue #53: the documentary analysis is complete; any test in Power BI needs the user
+     (Desktop and gateway run on Windows);
+   - issue #52: Python upgrade of the `spark` image.
 
 ## State of the Linux server
 
@@ -155,7 +179,10 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ## Open points to watch
 
-- Issue #50: DBeaver navigator and the Iceberg catalogs (analysis).
+- Issue #50: DBeaver navigator and the Iceberg catalogs (analysis). Root cause found
+  (2026-11-05); open point `SparkSessionCatalog`.
+- Issue #53 (low priority): Power BI analysis. Documentary findings complete; open points need
+  tests by the user in Power BI Desktop / gateway.
 - Issue #52 (medium priority): upgrade the Python runtime of the `spark` image (Python 3.10
   end of life). Not started. The checklist is in the issue.
 - Issue #51 (low priority): analysis of a distributable release. Findings of the brainstorming
@@ -173,6 +200,6 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ```text
 Read docs/HANDOFF.md (on main). The repository is now iceberg-platform-lab. Follow
-"Resume here": rename the old clone if needed, then issue #50 (DBeaver navigator analysis)
-or issue #52 (Python upgrade).
+"Resume here": rename the old clone if needed, then ask the user which goal to take:
+issue #50 (root cause known), #53 (Power BI analysis) or #52 (Python upgrade).
 ```
