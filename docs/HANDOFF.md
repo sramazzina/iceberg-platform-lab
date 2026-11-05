@@ -46,7 +46,7 @@ Fixes of 2026-11-03 (in PR #49):
 
 ## State of the Linux server
 
-- Docker Engine 29.2.1. Repository at `/home/sramazzina/work/sramazzina/iceberg-platform-poc`
+- Docker Engine 29.2.1. Repository at `/home/sramazzina/work/sramazzina/iceberg-platform-lab`
   (not the plan path `/home/sramazzina/work/dev/...`).
 - `.env`: RustFS variant, `NESSIE_MGMT_PORT=19000` (another stack holds host port 9000).
   Never print it. The stack runs with the `.env` selection (no catalog).
@@ -109,7 +109,7 @@ Fixes of 2026-11-03 (in PR #49):
 - Never print `.env`, `secrets/spark_user.env` or `secrets/rustfs/spark_user.env`.
 - Do not run `make reset` or `docker compose down -v` without the user's approval.
 - `gh pr edit` fails (Projects classic deprecation): use
-  `gh api -X PATCH repos/sramazzina/iceberg-platform-poc/pulls/<n> -F body=@<file>`.
+  `gh api -X PATCH repos/sramazzina/iceberg-platform-lab/pulls/<n> -F body=@<file>`.
 - Use absolute paths; the shell cwd can reset between commands.
 - Commands for the user: one command per code block, short lines. Long lines break when
   pasted, and `make` then runs its default target (`lint`). For a series of `make` commands

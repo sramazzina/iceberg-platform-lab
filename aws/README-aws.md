@@ -39,8 +39,8 @@ they get no credentials. Source:
 ## Run `setup.sh`
 
 1. Open AWS CloudShell in the region of the VM.
-2. Clone the repository: `git clone https://github.com/sramazzina/iceberg-platform-poc.git`
-3. Go to the folder: `cd iceberg-platform-poc`
+2. Clone the repository: `git clone https://github.com/sramazzina/iceberg-platform-lab.git`
+3. Go to the folder: `cd iceberg-platform-lab`
 4. Set the parameters:
    ```bash
    export AWS_REGION=<region of the VM>

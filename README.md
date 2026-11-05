@@ -1,4 +1,4 @@
-# iceberg-platform-poc
+# iceberg-platform-lab
 
 A reproducible lab to evaluate and compare two Apache Iceberg REST catalogs,
 **Apache Polaris** and **Project Nessie**, on one Amazon EC2 VM with Docker Compose.
@@ -414,7 +414,7 @@ data directory, then run `make up`.
 ### Hosts
 
 - Use Docker Desktop on Windows and macOS. On Windows, keep the repository in the WSL2
-  filesystem (for example `~/iceberg-platform-poc`), not under `/mnt/c`: bind mounts on
+  filesystem (for example `~/iceberg-platform-lab`), not under `/mnt/c`: bind mounts on
   `/mnt/c` are slow.
 - `LAB_UID`: on Linux and macOS use the output of `id -u`; on WSL2 the default `1000` is
   usually right.
@@ -441,6 +441,6 @@ data directory, then run `make up`.
 
 ## License
 
-Copyright 2026 the iceberg-platform-poc authors.
+Copyright 2026 the iceberg-platform-lab authors.
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).

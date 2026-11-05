@@ -913,7 +913,7 @@ Each entry: what the requirement says, what the lab does, and why.
 
 ### D1 — Repository root name
 - Requirement (section 7): the root folder is `iceberg-catalog-lab/`.
-- Lab: the root is the repository `iceberg-platform-poc`.
+- Lab: the root is the repository `iceberg-platform-lab`.
 - Why: the repository already existed with this name. The layout below the root follows section 7.
 
 ### D2 — `aws/setup.sh` uses the existing VM role
@@ -1002,8 +1002,8 @@ they get no credentials. Source:
 ## Run `setup.sh`
 
 1. Open AWS CloudShell in the region of the VM.
-2. Clone the repository: `git clone https://github.com/sramazzina/iceberg-platform-poc.git`
-3. Go to the folder: `cd iceberg-platform-poc`
+2. Clone the repository: `git clone https://github.com/sramazzina/iceberg-platform-lab.git`
+3. Go to the folder: `cd iceberg-platform-lab`
 4. Set the parameters:
    ```bash
    export AWS_REGION=<region of the VM>

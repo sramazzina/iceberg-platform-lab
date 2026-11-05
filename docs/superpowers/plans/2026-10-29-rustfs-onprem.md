@@ -80,7 +80,7 @@ Source: research report in the brainstorming session (RustFS tag 1.0.4, Polaris 
   bash -c 'set -a; . "$RF_ENV"; set +a; <command>'
   ```
 
-  `RF_ENV=/tmp/claude-1000/-home-sramazzina-work-dev-sramazzina-iceberg-platform-poc-docs/72f79856-2251-4d06-9b30-cb990b84db23/scratchpad/rustfs-lab.env`.
+  `RF_ENV=/tmp/claude-1000/-home-sramazzina-work-dev-sramazzina-iceberg-platform-lab-docs/72f79856-2251-4d06-9b30-cb990b84db23/scratchpad/rustfs-lab.env`.
   Never print this file. Commands without the prefix run on the AWS stack.
   `RF_ENV` holds only `COMPOSE_FILE`, the two image pins and the six `RUSTFS_*_KEY` values.
   It does not hold `S3_BUCKET` or `AWS_REGION`: `tests/catalog-smoke.sh` sources `.env`,
@@ -124,7 +124,7 @@ Source: research report in the brainstorming session (RustFS tag 1.0.4, Polaris 
 - [ ] **Step 1: Check that RustFS runs with the host UID (spec section 6.3)**
 
 ```bash
-dir=/tmp/claude-1000/-home-sramazzina-work-dev-sramazzina-iceberg-platform-poc-docs/72f79856-2251-4d06-9b30-cb990b84db23/scratchpad/rustfs-uid-test
+dir=/tmp/claude-1000/-home-sramazzina-work-dev-sramazzina-iceberg-platform-lab-docs/72f79856-2251-4d06-9b30-cb990b84db23/scratchpad/rustfs-uid-test
 mkdir -p "$dir"
 docker run -d --name rustfs-uid-test --user "$(id -u)" \
   -e RUSTFS_ACCESS_KEY=uidtestadmin -e RUSTFS_SECRET_KEY=uidtestsecret \
@@ -980,7 +980,7 @@ then delete the directory.
 ### macOS and Windows (not verified)
 
 - Use Docker Desktop. On Windows, keep the repository in the WSL2 filesystem (for example
-  `~/iceberg-platform-poc`), not under `/mnt/c`: bind mounts on `/mnt/c` are slow.
+  `~/iceberg-platform-lab`), not under `/mnt/c`: bind mounts on `/mnt/c` are slow.
 - `LAB_UID`: on macOS use the output of `id -u`; on WSL2 the default `1000` is usually right.
 - Docker Desktop gives at least 8 GB of memory to its VM: the lab needs about 6 GB with
   all catalogs on.

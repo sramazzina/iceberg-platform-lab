@@ -8,7 +8,7 @@ Each entry: what the requirement says, what the lab does, and why.
 
 ### D1 — Repository root name
 - Requirement (section 7): the root folder is `iceberg-catalog-lab/`.
-- Lab: the root is the repository `iceberg-platform-poc`.
+- Lab: the root is the repository `iceberg-platform-lab`.
 - Why: the repository already existed with this name. The layout below the root follows section 7.
 
 ### D2 — `aws/setup.sh` uses the existing VM role

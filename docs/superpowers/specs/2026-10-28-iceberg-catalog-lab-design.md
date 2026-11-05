@@ -47,7 +47,7 @@ Facts about the environment, confirmed by the user:
 
 ## 3. Repository
 
-- Repository root = `iceberg-platform-poc` (the requirements name the root
+- Repository root = `iceberg-platform-lab` (the requirements name the root
   `iceberg-catalog-lab/`; the difference goes into `NOTES.md`).
 - The repository is **public**. No account-specific value enters git: no
   account ID, ARN, bucket name, `externalId`, password or client secret.
