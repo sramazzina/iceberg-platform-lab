@@ -24,18 +24,30 @@ trino_sql() {
 touched=()
 cleanup() {
   set +e
-  local c purge
+  local c purge out rc=0
   for c in "${touched[@]}"; do
     # Nessie never deletes files (catalog-smoke.sh): drop without PURGE, then delete the files.
     purge=" PURGE"; [[ $c == nessie ]] && purge=""
-    spark_sql "DROP TABLE IF EXISTS $c.$ns.from_spark_$ts$purge;
+    out=$(spark_sql "DROP TABLE IF EXISTS $c.$ns.from_spark_$ts$purge;
 DROP TABLE IF EXISTS $c.$ns.from_trino_$ts$purge;
-DROP NAMESPACE IF EXISTS $c.$ns" >/dev/null
+DROP NAMESPACE IF EXISTS $c.$ns")
+    if [[ $out == *"spark-sql failed"* ]]; then
+      if [[ $c == polaris ]]; then
+        # The VM role cannot delete the files of polaris (catalog-smoke.sh): they stay.
+        echo "  FAIL - could not drop the test tables of $c.$ns with PURGE; delete s3://$S3_BUCKET/polaris/ files of $ns from CloudShell"
+        rc=1
+      else
+        echo "  warn - could not drop the test tables of $c.$ns; S3 files kept"
+      fi
+    fi
     if [[ $c == nessie ]]; then
+      # The namespace trino_check is only for this test: deleting its whole prefix is safe.
       docker compose exec -T spark aws s3 rm --recursive --quiet "s3://$S3_BUCKET/nessie/$ns/" >/dev/null 2>&1 \
         || echo "  warn - could not delete s3://$S3_BUCKET/nessie/$ns/"
     fi
   done
+  # An exit in an EXIT trap sets the exit code of the script.
+  if ((rc != 0)); then exit 1; fi
 }
 trap cleanup EXIT
 

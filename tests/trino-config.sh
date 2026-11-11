@@ -18,9 +18,9 @@ run_trino() {
     -v "$tmp:/run/test-secrets:ro" -e LAB_TRINO_SECRETS=/run/test-secrets/trino_user.env "$@"
 }
 
-# etc CATALOGS [S3_ENDPOINT]: each file that the entrypoint writes, after a line "== <file>".
+# etc CATALOGS [S3_ENDPOINT [DOCKER_RUN_OPTION...]]: each file that the entrypoint writes, after a line "== <file>".
 etc() {
-  run_trino -e LAB_CATALOGS="$1" -e S3_ENDPOINT="${2:-}" -e S3_PATH_STYLE_ACCESS=true trino \
+  run_trino -e LAB_CATALOGS="$1" -e S3_ENDPOINT="${2:-}" -e S3_PATH_STYLE_ACCESS=true "${@:3}" trino \
     bash -c 'cd /tmp/trino-etc && for f in catalog/*.properties jvm.config config.properties node.properties; do if [[ -f $f ]]; then printf "== %s\n" "$f"; cat "$f"; fi; done' \
     2>/dev/null || echo "command failed"
 }
@@ -31,7 +31,8 @@ err() {
 }
 
 echo "trino configuration"
-none=$(etc "")
+# TRINO_HEAP=: empty, so the entrypoint uses its default 2g whatever .env sets.
+none=$(etc "" "" -e TRINO_HEAP=)
 assert_not_contains "$none" "command failed" "the entrypoint runs with no catalog"
 assert_not_contains "$none" "== catalog/" "no catalog file with no catalog"
 assert_contains "$none" "-Xmx2g" "jvm.config has the default heap"

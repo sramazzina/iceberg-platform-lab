@@ -57,6 +57,8 @@ flowchart LR
 ```
 
 `postgres` and `spark` always run. The catalogs are Compose profiles and are off by default.
+The optional services `spark-thrift` (profile `thrift`) and `trino` (profile `trino`) are
+also Compose profiles.
 The `spark` image also has the Nessie CLI (command `nessie`).
 
 ## Prerequisites
@@ -174,8 +176,8 @@ with each catalog.
 
 ## Access from your machine
 
-The lab publishes its ports on `127.0.0.1` of the VM only. Nessie, the baseline catalog and
-the Spark UI have no authentication, so do not open these ports in the security group. Use a
+The lab publishes its ports on `127.0.0.1` of the VM only. Nessie, the baseline catalog,
+the Spark UI, the Spark Thrift Server and Trino have no authentication, so do not open these ports in the security group. Use a
 tunnel instead.
 
 | Service | VM port | Address on your machine |
@@ -188,6 +190,7 @@ tunnel instead.
 | Polaris management (health) | 8182 | <http://localhost:8182/q/health/ready> |
 | Baseline REST catalog (no authentication) | 8183 | <http://localhost:8183/v1/config> |
 | Spark Thrift Server (JDBC, no authentication; profile `thrift`) | 10000 | `jdbc:hive2://localhost:10000/;auth=noSasl` |
+| Trino (JDBC and web UI, no authentication; profile `trino`) | 8080 | `jdbc:trino://localhost:8080` |
 
 A catalog port answers only when the catalog is on (`COMPOSE_PROFILES`).
 If host port 9000 is in use, set `NESSIE_MGMT_PORT` in `.env` and run `make up`.
@@ -209,6 +212,7 @@ Use that port in the address of the table.
      -L 8182:127.0.0.1:8182 \
      -L 8183:127.0.0.1:8183 \
      -L 10000:127.0.0.1:10000 \
+     -L 8080:127.0.0.1:8080 \
      admin@<vm-public-ip>
    ```
 
@@ -232,7 +236,7 @@ Session Manager plugin must be installed on your machine.
      --parameters '{"portNumber":["8888"],"localPortNumber":["8888"]}'
    ```
 
-2. Repeat the command in a new terminal for each other port (4040, 19120, 9000, 8181, 8182, 8183, 10000).
+2. Repeat the command in a new terminal for each other port (4040, 19120, 9000, 8181, 8182, 8183, 10000, 8080).
 
 ## Stop and clean up
 
@@ -254,7 +258,7 @@ Session Manager plugin must be installed on your machine.
 | `Unable to locate credentials`, or an S3 call hangs, in a container | The IMDS hop limit of the VM is 1, so the containers cannot reach the instance profile | In CloudShell, run `aws/setup.sh` again (it sets the hop limit to 2) |
 | `aws s3 ls` on the VM uses the wrong identity | `AWS_*` variables or a `[default]` profile have priority over the instance profile | See [aws/README-aws.md, "Check from the VM"](aws/README-aws.md#check-from-the-vm) |
 | `make up` fails, and `docker compose logs polaris-setup` says `secrets/ is not writable` | Docker created `secrets/` as root, because the stack was started without `make up` | Run `sudo chown $(id -u) secrets`, then `make up` |
-| The polaris-setup log says `credentials reset` | The file `secrets/spark_user.env` was missing or did not work, so setup made new credentials | Run `docker compose restart spark`: a running `spark` keeps the old credentials |
+| The polaris-setup log says `credentials reset` | The file `secrets/spark_user.env` or `secrets/trino_user.env` was missing or did not work, so setup made new credentials | Run `docker compose restart spark` (and `docker compose restart trino` if the profile `trino` is on): a running service keeps the old credentials |
 | Spark says `catalog not found` | The catalog is off, or `COMPOSE_PROFILES` has a typo (the spark log says `no Spark catalog for profile ...`) | Check `COMPOSE_PROFILES` in `.env`, then run `make up` |
 | HTTP 401 from Polaris in a long Spark session | The Polaris token of the session is no longer valid. Tokens last one hour; the Iceberg client normally refreshes them, but a refresh can fail, for example after a restart of Polaris | Start a new Spark session (`make sql-polaris`, or restart the notebook kernel) |
 | `make smoke-test` fails on `catalog-smoke.sh polaris` with `files left under ...` | A Polaris table was dropped without its files | Delete the listed files from CloudShell (`aws s3 rm`); the VM role cannot delete under `polaris/` |
@@ -400,6 +404,9 @@ that are on. Start the profile `trino` only on a host that you do not share.
 On AWS, Trino uses the instance profile of the VM for `nessie` and `rest`, and the
 credentials that Polaris vends for `polaris`.
 
+Not verified with a live run: Trino on the RustFS variant. Only the Compose configuration is
+checked statically. `tests/trino-service.sh` covers it when you run it on a RustFS host.
+
 ### Start Trino
 
 1. Add `trino` to `COMPOSE_PROFILES` in `.env`, for example `nessie,trino`.
@@ -468,7 +475,7 @@ intact, so you can go back to it.
 3. In `.env`, set the six `RUSTFS_*_KEY` values. Each secret key has at least 8 characters.
    `S3_BUCKET` is the name of a local bucket in RustFS: you can keep the AWS value.
 4. Run `make up`. The service `rustfs-setup` creates the bucket, the user `polaris` (Polaris
-   STS calls) and the user `lab` (Spark, Nessie, `rest`).
+   STS calls) and the user `lab` (Spark, Trino, Nessie, `rest`).
 5. Run `make smoke-test`.
 
 To go back to AWS, comment out `COMPOSE_FILE` and run `make up`. If you changed `S3_BUCKET`
@@ -521,6 +528,8 @@ data directory, then run `make up`.
 | [Plan: Nessie CLI](docs/superpowers/plans/2026-10-29-nessie-cli.md) | Task-by-task implementation plan |
 | [Design spec: RustFS variant](docs/superpowers/specs/2026-10-29-rustfs-onprem-design.md) | On-premise variant with RustFS |
 | [Plan: RustFS variant](docs/superpowers/plans/2026-10-29-rustfs-onprem.md) | Task-by-task implementation plan |
+| [Design spec: Trino](docs/superpowers/specs/2026-11-11-trino-design.md) | Optional Trino service on the Iceberg catalogs |
+| [Plan: Trino](docs/superpowers/plans/2026-11-11-trino.md) | Task-by-task implementation plan |
 | [Handoff](docs/HANDOFF.md) | Current state and decisions (for the next work session) |
 
 ## License

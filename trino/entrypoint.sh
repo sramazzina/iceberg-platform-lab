@@ -45,6 +45,10 @@ for profile in "${list[@]}"; do
   cp "$src/catalog/$catalog.properties" "$etc/catalog/$catalog.properties"
   # S3-compatible storage: Trino rejects an empty s3.endpoint, so the lines are a fragment.
   if [[ -n ${S3_ENDPOINT:-} ]]; then
+    if [[ ! -f $src/catalog-s3-endpoint/$catalog.properties ]]; then
+      echo "trino-entrypoint: no S3 endpoint fragment for catalog '$catalog' (trino/catalog-s3-endpoint/$catalog.properties)" >&2
+      exit 1
+    fi
     cat "$src/catalog-s3-endpoint/$catalog.properties" >>"$etc/catalog/$catalog.properties"
   fi
 done
