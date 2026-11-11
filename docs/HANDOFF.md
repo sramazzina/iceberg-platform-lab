@@ -1,8 +1,8 @@
 # Handoff — Iceberg catalog lab
 
 - Date: 2026-11-11
-- From: Claude Code session on the EC2 VM: brainstorming and design spec of #54 (Trino), new
-  issue #55. Earlier on 2026-11-11: `SparkSessionCatalog` spike and closure of #50, new issue
+- From: Claude Code session on the EC2 VM: work plan of #54 (Trino), task issues #56-#62.
+  Earlier on 2026-11-11: brainstorming and design spec of #54, new issue #55; `SparkSessionCatalog` spike and closure of #50, new issue
   #54. Earlier session (workstation, 2026-11-05): repository rename, issue #52, Power BI
   analysis (#53), root cause of #50
 - To: the next Claude Code session (Linux server, workstation or EC2 VM)
@@ -18,8 +18,9 @@
 | ELT with dbt | Merged (PR #49, merge commit `72b81ca`, 2026-11-03). Branch `feat/dbt-elt` deleted (local and remote); SDD workspace deleted |
 | dbt spec | `docs/superpowers/specs/2026-10-30-dbt-elt-design.md` |
 | dbt plan | `docs/superpowers/plans/2026-10-30-dbt-elt.md` — Tasks 29-36, all done |
-| GitHub issues | #40 … #48 and #50 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #54 open (Trino, spec done, plan next). #55 open (dbt-trino experiment, after #54) |
+| GitHub issues | #40 … #48 and #50 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #54 open (Trino, spec and plan done, execution next). #56-#62 open (task issues of the Trino plan). #55 open (dbt-trino experiment, after #54) |
 | Trino spec (#54) | `docs/superpowers/specs/2026-11-11-trino-design.md`, on branch `feat/trino` only (commit `1e65e17`, not pushed) |
+| Trino plan (#54) | `docs/superpowers/plans/2026-11-11-trino.md`, on branch `feat/trino` only (commit `d3dae04`, not pushed). Tasks 1-7 = issues #56-#62 |
 | Repository name | `sramazzina/iceberg-platform-lab` since 2026-11-05 (was `iceberg-platform-poc`; GitHub redirects the old name) |
 | CI | The repository has no GitHub Actions workflow |
 
@@ -98,18 +99,24 @@ Changes of 2026-11-11 (EC2 VM):
   - Nessie through REST `/iceberg/main`; Trino catalog names = Spark catalog names.
 - Risk to check first in the plan (spec section 6.5): the container runs with `LAB_UID`;
   verify that the Trino image starts with an arbitrary UID.
+- Issue #54: the user approved the spec without changes. Work plan committed on `feat/trino`
+  (`d3dae04`); one issue per task (#56-#62); "Write the design spec and the work plan" ticked
+  in #54. The plan lists 7 deviations from the spec (section "Deviations from the spec"), for
+  example `fs.s3.enabled` (Trino 484 docs) instead of `fs.native-s3.enabled`.
+- **Blocker:** the EC2 VM has 590 MB free on `/` (20 GB disk). `docker pull trinodb/trino:484`
+  failed with `no space left on device`. Docker uses 7.8 GB for images and 3.8 GB for the
+  build cache. The user decides how to free space before Task 1.
 
 ## Resume here
 
 0. On every machine with an old clone (Linux server, EC2 VM), do the rename steps in
    "Rename of the clone" below before any other work.
-1. Work in progress: issue #54 (Trino). Run `git checkout feat/trino`. The spec is there.
-2. The user reviews the spec `docs/superpowers/specs/2026-11-11-trino-design.md`. Apply the
-   requested changes, if any.
-3. Write the work plan with `superpowers:writing-plans` in
-   `docs/superpowers/plans/2026-11-11-trino.md`, commit it on `feat/trino`, create one GitHub
-   issue per plan task (link them to #54), then tick "Write the design spec and the work plan"
-   in #54.
+1. Work in progress: issue #54 (Trino). Run `git checkout feat/trino`. The spec and the plan
+   `docs/superpowers/plans/2026-11-11-trino.md` are there.
+2. Ask the user how to free disk space on the EC2 VM (see the blocker above). Do not delete
+   Docker images, volumes or the build cache without the user's approval.
+3. Task 1 (#56) is a spike on the image: apply its results to Tasks 3-5 before they run.
+   Task 7 (#62) is for the controller (DBeaver check by the user, `NOTES.md` on `main`).
 4. Execute the plan subagent-driven. Do not push `feat/trino` before the implementation is
    complete; open the PR last (`Closes #54` and the task issues).
 5. Other goals, later: #55 (after #54), #53 (needs the user in Power BI), #52 (Python
@@ -215,8 +222,8 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ## Open points to watch
 
-- Issue #54 (medium priority): Trino as an optional SQL engine. Spec done on `feat/trino`;
-  plan and implementation next.
+- Issue #54 (medium priority): Trino as an optional SQL engine. Spec and plan done on
+  `feat/trino`; execution next (tasks #56-#62). Blocked by the free disk space of the EC2 VM.
 - Issue #55 (`enhancement`, `area: elt`): dbt-spark versus dbt-trino experiment. After #54.
 - Issue #53 (low priority): Power BI analysis. Documentary findings complete; open points need
   tests by the user in Power BI Desktop / gateway.
@@ -237,6 +244,7 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ```text
 Read docs/HANDOFF.md (on main). Follow "Resume here": issue #54 (Trino) is in progress
-on the local branch feat/trino. Ask the user for the review of the spec
-docs/superpowers/specs/2026-11-11-trino-design.md, then write the work plan.
+on the local branch feat/trino. The plan docs/superpowers/plans/2026-11-11-trino.md is
+ready (tasks #56-#62). Free disk space on the EC2 VM with the user, then execute the plan
+subagent-driven.
 ```
