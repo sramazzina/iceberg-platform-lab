@@ -1,8 +1,9 @@
 # Handoff — Iceberg catalog lab
 
 - Date: 2026-11-11
-- From: Claude Code session on the EC2 VM: work plan of #54 (Trino), task issues #56-#62.
-  Earlier on 2026-11-11: brainstorming and design spec of #54, new issue #55; `SparkSessionCatalog` spike and closure of #50, new issue
+- From: Claude Code session on the EC2 VM: execution of the Trino plan (#54), PR #64 merged,
+  new issue #63. Earlier on 2026-11-11: work plan of #54, task issues #56-#62;
+  brainstorming and design spec of #54, new issue #55; `SparkSessionCatalog` spike and closure of #50, new issue
   #54. Earlier session (workstation, 2026-11-05): repository rename, issue #52, Power BI
   analysis (#53), root cause of #50
 - To: the next Claude Code session (Linux server, workstation or EC2 VM)
@@ -18,9 +19,8 @@
 | ELT with dbt | Merged (PR #49, merge commit `72b81ca`, 2026-11-03). Branch `feat/dbt-elt` deleted (local and remote); SDD workspace deleted |
 | dbt spec | `docs/superpowers/specs/2026-10-30-dbt-elt-design.md` |
 | dbt plan | `docs/superpowers/plans/2026-10-30-dbt-elt.md` — Tasks 29-36, all done |
-| GitHub issues | #40 … #48 and #50 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #54 open (Trino, spec and plan done, execution next). #56-#62 open (task issues of the Trino plan). #55 open (dbt-trino experiment, after #54) |
-| Trino spec (#54) | `docs/superpowers/specs/2026-11-11-trino-design.md`, on branch `feat/trino` only (commit `1e65e17`, not pushed) |
-| Trino plan (#54) | `docs/superpowers/plans/2026-11-11-trino.md`, on branch `feat/trino` only (commit `d3dae04`, not pushed). Tasks 1-7 = issues #56-#62 |
+| GitHub issues | #40 … #48, #50, #54 and #56-#62 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #55 open (dbt-trino experiment, now unblocked). #63 open (Trino on the RustFS variant, low priority) |
+| Trino (#54) | Merged (PR #64, merge commit `dd7423f`, 2026-11-11). Branch `feat/trino` deleted (local and remote). Spec `docs/superpowers/specs/2026-11-11-trino-design.md`, plan `docs/superpowers/plans/2026-11-11-trino.md` (Tasks 1-7, all done). Decisions and findings: `NOTES.md` D17, D18, F10 |
 | Repository name | `sramazzina/iceberg-platform-lab` since 2026-11-05 (was `iceberg-platform-poc`; GitHub redirects the old name) |
 | CI | The repository has no GitHub Actions workflow |
 
@@ -103,24 +103,37 @@ Changes of 2026-11-11 (EC2 VM):
   (`d3dae04`); one issue per task (#56-#62); "Write the design spec and the work plan" ticked
   in #54. The plan lists 7 deviations from the spec (section "Deviations from the spec"), for
   example `fs.s3.enabled` (Trino 484 docs) instead of `fs.native-s3.enabled`.
-- **Blocker:** the EC2 VM has 590 MB free on `/` (20 GB disk). `docker pull trinodb/trino:484`
-  failed with `no space left on device`. Docker uses 7.8 GB for images and 3.8 GB for the
-  build cache. The user decides how to free space before Task 1.
+- Disk blocker solved: the user grew the EC2 VM disk to 30 GB (about 11 GB free after the
+  Trino image).
+- Trino plan executed subagent-driven (one commit per task, one final review, one fixup
+  commit `fa2debd`, one push). PR #64 merged by the user. Results (`NOTES.md` F10):
+  - image: Trino starts with an arbitrary UID and the configuration in `/tmp/trino-etc`; the
+    image health check falls back to port 8080 (the service relies on it);
+  - AWS stack, profiles `nessie,polaris,baseline,trino`: `tests/trino-service.sh` passed on
+    all three catalogs (Spark writes and Trino reads, and the reverse; JDBC metadata); the
+    four NOT CONFIRMED points of the spec are confirmed; empty `AWS_ACCESS_KEY_ID` falls back
+    to the VM instance profile; `make smoke-test` and `tests/catalog-selection.sh` passed;
+  - memory: trino 704 MiB / 3 GiB; all three catalogs and Trino fit on 8 GB without `thrift`;
+  - DBeaver (user, SSH tunnel `-L 8080:127.0.0.1:8080`, Trino driver): catalogs, namespaces,
+    tables and data visible. The namespaces looked empty first: the test scripts drop their
+    tables at the end. A refresh (F5) is needed after a change.
+- The RustFS variant is not configured on the EC2 VM: Trino on RustFS is not verified live.
+  Follow-up issue #63 (`priority: low`); `README.md` says "not verified".
+- Order changed with the user: DBeaver check and `NOTES.md` (commit `00f8058` on `main`)
+  before the push and the PR, so that every checklist was ticked before the PR.
 
 ## Resume here
 
-0. On every machine with an old clone (Linux server, EC2 VM), do the rename steps in
-   "Rename of the clone" below before any other work.
-1. Work in progress: issue #54 (Trino). Run `git checkout feat/trino`. The spec and the plan
-   `docs/superpowers/plans/2026-11-11-trino.md` are there.
-2. Ask the user how to free disk space on the EC2 VM (see the blocker above). Do not delete
-   Docker images, volumes or the build cache without the user's approval.
-3. Task 1 (#56) is a spike on the image: apply its results to Tasks 3-5 before they run.
-   Task 7 (#62) is for the controller (DBeaver check by the user, `NOTES.md` on `main`).
-4. Execute the plan subagent-driven. Do not push `feat/trino` before the implementation is
-   complete; open the PR last (`Closes #54` and the task issues).
-5. Other goals, later: #55 (after #54), #53 (needs the user in Power BI), #52 (Python
-   upgrade).
+0. On every machine with an old clone (Linux server, workstation if not done), do the rename
+   steps in "Rename of the clone" below before any other work.
+1. No work in progress. Pick the next goal with the user:
+   - #55: dbt-spark versus dbt-trino experiment (Trino is now in the lab);
+   - #63: run `tests/trino-service.sh` on a host with the RustFS variant (the workstation or
+     the Linux server);
+   - #53: Power BI (needs the user in Power BI Desktop / gateway);
+   - #52: Python upgrade of the `spark` image.
+2. Start new work with `superpowers:brainstorming`, then spec, plan, issues, subagent-driven
+   execution.
 
 ## State of the Linux server
 
@@ -162,9 +175,14 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 - Repository at `/home/admin/work/sramazzina/iceberg-platform-lab` (renamed 2026-11-11;
   remote updated; no Serena config on this VM).
-- `.env`: `COMPOSE_PROFILES=nessie,thrift` (since 2026-11-11). The stack runs. DBeaver on
-  Windows connects through the SSH tunnel with
-  `jdbc:hive2://127.0.0.1:10000/;auth=noSasl;?spark.sql.defaultCatalog=nessie`.
+- Disk: 30 GB (grown by the user on 2026-11-11).
+- `.env`: `COMPOSE_PROFILES=nessie,polaris,baseline,trino` and `TRINO_IMAGE=trinodb/trino:484`
+  (since 2026-11-11). The stack runs with Trino; `thrift` is off (8 GB RAM: do not run
+  `thrift` and `trino` together). No RustFS variables. DBeaver on Windows connects to Trino
+  through the SSH tunnel with `jdbc:trino://localhost:8080` (any user, no password); the
+  Thrift Server URL `jdbc:hive2://127.0.0.1:10000/;auth=noSasl;?spark.sql.defaultCatalog=nessie`
+  works only with the profile `thrift`.
+- `secrets/trino_user.env` exists (written by `polaris-setup`). Never print it.
 - No `tpch_` data is left (cleaned by the user).
 - In the shell `cat` is an alias for a missing `bat` (as on the workstation): use `command cat`.
 - The VM role can only **list** under `polaris/`: drop every Polaris table with
@@ -210,7 +228,7 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ## Rules for work in every session
 
-- Never print `.env`, `secrets/spark_user.env` or `secrets/rustfs/spark_user.env`.
+- Never print `.env`, `secrets/*_user.env` or `secrets/rustfs/*_user.env`.
 - Do not run `make reset` or `docker compose down -v` without the user's approval.
 - `gh pr edit` fails (Projects classic deprecation): use
   `gh api -X PATCH repos/sramazzina/iceberg-platform-lab/pulls/<n> -F body=@<file>`.
@@ -222,9 +240,10 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ## Open points to watch
 
-- Issue #54 (medium priority): Trino as an optional SQL engine. Spec and plan done on
-  `feat/trino`; execution next (tasks #56-#62). Blocked by the free disk space of the EC2 VM.
-- Issue #55 (`enhancement`, `area: elt`): dbt-spark versus dbt-trino experiment. After #54.
+- Issue #63 (low priority): Trino on the RustFS variant, not verified live.
+- Issue #55 (`enhancement`, `area: elt`): dbt-spark versus dbt-trino experiment. Unblocked
+  (#54 merged).
+- Trino health check depends on the image fallback to port 8080 (`NOTES.md` F10).
 - Issue #53 (low priority): Power BI analysis. Documentary findings complete; open points need
   tests by the user in Power BI Desktop / gateway.
 - Issue #52 (medium priority): upgrade the Python runtime of the `spark` image (Python 3.10
@@ -243,8 +262,7 @@ the absolute path of the directory, so the stack must stop before the rename.
 ## Kick-off prompt for the next session
 
 ```text
-Read docs/HANDOFF.md (on main). Follow "Resume here": issue #54 (Trino) is in progress
-on the local branch feat/trino. The plan docs/superpowers/plans/2026-11-11-trino.md is
-ready (tasks #56-#62). Free disk space on the EC2 VM with the user, then execute the plan
-subagent-driven.
+Read docs/HANDOFF.md (on main). Trino (#54) is merged. Follow "Resume here": ask the
+user which goal to start next (#55 dbt-trino, #63 Trino on RustFS, #53 Power BI, #52
+Python upgrade).
 ```
