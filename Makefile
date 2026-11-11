@@ -1,4 +1,4 @@
-.PHONY: lint test-aws up down reset logs sql-nessie sql-polaris sql-rest nessie-cli smoke-test tpch-gen tpch-load tpch-clean elt-require dbt elt-test
+.PHONY: lint test-aws up down reset logs sql-nessie sql-polaris sql-rest sql-trino nessie-cli smoke-test tpch-gen tpch-load tpch-clean elt-require dbt elt-test
 
 lint:
 	tests/lint.sh
@@ -40,6 +40,10 @@ sql-polaris:
 
 sql-rest:
 	docker compose exec spark spark-sql --conf spark.sql.defaultCatalog=rest
+
+# Trino CLI (profile trino). Catalogs: nessie, polaris, rest (those that are on).
+sql-trino:
+	docker compose exec trino trino
 
 nessie-cli:
 	docker compose exec spark nessie

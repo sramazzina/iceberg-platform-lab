@@ -57,6 +57,8 @@ flowchart LR
 ```
 
 `postgres` and `spark` always run. The catalogs are Compose profiles and are off by default.
+The optional services `spark-thrift` (profile `thrift`) and `trino` (profile `trino`) are
+also Compose profiles.
 The `spark` image also has the Nessie CLI (command `nessie`).
 
 ## Prerequisites
@@ -98,6 +100,7 @@ Do these steps once. Steps 1-2 run in CloudShell, the other steps on the VM.
 
 1. Set `COMPOSE_PROFILES` in `.env`: `polaris`, `nessie`, `baseline` (Spark catalog `rest`),
    or a list (`nessie,polaris`, no spaces). Leave it empty for no catalog.
+   Add `thrift` for the Spark Thrift Server, `trino` for Trino (see [Trino](#trino)).
 2. Run `make up`. It starts the catalogs in `COMPOSE_PROFILES` and stops the others.
    The data of a stopped catalog stays (Postgres database and S3 prefix).
 3. Run `make smoke-test`. It tests the base stack and each catalog that is on.
@@ -160,6 +163,7 @@ with each catalog.
 | `make reset` | Like `make down`, and also **deletes the volumes**: all Polaris and Nessie metadata (Postgres) and the baseline catalog (SQLite) are lost. The S3 files stay |
 | `make smoke-test` | Runs the acceptance tests of the base stack and of each catalog that is on |
 | `make sql-polaris`, `make sql-nessie`, `make sql-rest` | Opens a Spark SQL shell on the catalog |
+| `make sql-trino` | Opens the Trino CLI (needs the profile `trino`). The catalogs that are on are available as `nessie`, `polaris`, `rest` |
 | `make nessie-cli` | Opens the Nessie CLI on the Nessie service (the catalog `nessie` must be on) |
 | `make logs` | Shows the logs of the running services |
 | `make lint` | Static checks: script syntax, JSON, Compose file, no secret in tracked files |
@@ -172,8 +176,8 @@ with each catalog.
 
 ## Access from your machine
 
-The lab publishes its ports on `127.0.0.1` of the VM only. Nessie, the baseline catalog and
-the Spark UI have no authentication, so do not open these ports in the security group. Use a
+The lab publishes its ports on `127.0.0.1` of the VM only. Nessie, the baseline catalog,
+the Spark UI, the Spark Thrift Server and Trino have no authentication, so do not open these ports in the security group. Use a
 tunnel instead.
 
 | Service | VM port | Address on your machine |
@@ -186,6 +190,7 @@ tunnel instead.
 | Polaris management (health) | 8182 | <http://localhost:8182/q/health/ready> |
 | Baseline REST catalog (no authentication) | 8183 | <http://localhost:8183/v1/config> |
 | Spark Thrift Server (JDBC, no authentication; profile `thrift`) | 10000 | `jdbc:hive2://localhost:10000/;auth=noSasl` |
+| Trino (JDBC and web UI, no authentication; profile `trino`) | 8080 | `jdbc:trino://localhost:8080` |
 
 A catalog port answers only when the catalog is on (`COMPOSE_PROFILES`).
 If host port 9000 is in use, set `NESSIE_MGMT_PORT` in `.env` and run `make up`.
@@ -207,6 +212,7 @@ Use that port in the address of the table.
      -L 8182:127.0.0.1:8182 \
      -L 8183:127.0.0.1:8183 \
      -L 10000:127.0.0.1:10000 \
+     -L 8080:127.0.0.1:8080 \
      admin@<vm-public-ip>
    ```
 
@@ -230,7 +236,7 @@ Session Manager plugin must be installed on your machine.
      --parameters '{"portNumber":["8888"],"localPortNumber":["8888"]}'
    ```
 
-2. Repeat the command in a new terminal for each other port (4040, 19120, 9000, 8181, 8182, 8183, 10000).
+2. Repeat the command in a new terminal for each other port (4040, 19120, 9000, 8181, 8182, 8183, 10000, 8080).
 
 ## Stop and clean up
 
@@ -252,7 +258,7 @@ Session Manager plugin must be installed on your machine.
 | `Unable to locate credentials`, or an S3 call hangs, in a container | The IMDS hop limit of the VM is 1, so the containers cannot reach the instance profile | In CloudShell, run `aws/setup.sh` again (it sets the hop limit to 2) |
 | `aws s3 ls` on the VM uses the wrong identity | `AWS_*` variables or a `[default]` profile have priority over the instance profile | See [aws/README-aws.md, "Check from the VM"](aws/README-aws.md#check-from-the-vm) |
 | `make up` fails, and `docker compose logs polaris-setup` says `secrets/ is not writable` | Docker created `secrets/` as root, because the stack was started without `make up` | Run `sudo chown $(id -u) secrets`, then `make up` |
-| The polaris-setup log says `credentials reset` | The file `secrets/spark_user.env` was missing or did not work, so setup made new credentials | Run `docker compose restart spark`: a running `spark` keeps the old credentials |
+| The polaris-setup log says `credentials reset` | The file `secrets/spark_user.env` or `secrets/trino_user.env` was missing or did not work, so setup made new credentials | Run `docker compose restart spark` (and `docker compose restart trino` if the profile `trino` is on): a running service keeps the old credentials |
 | Spark says `catalog not found` | The catalog is off, or `COMPOSE_PROFILES` has a typo (the spark log says `no Spark catalog for profile ...`) | Check `COMPOSE_PROFILES` in `.env`, then run `make up` |
 | HTTP 401 from Polaris in a long Spark session | The Polaris token of the session is no longer valid. Tokens last one hour; the Iceberg client normally refreshes them, but a refresh can fail, for example after a restart of Polaris | Start a new Spark session (`make sql-polaris`, or restart the notebook kernel) |
 | `make smoke-test` fails on `catalog-smoke.sh polaris` with `files left under ...` | A Polaris table was dropped without its files | Delete the listed files from CloudShell (`aws s3 rm`); the VM role cannot delete under `polaris/` |
@@ -363,6 +369,8 @@ do not use it.
    the Iceberg tables: it shows only the schemas `default` and `global_temp` of the Spark
    session catalog, and they are empty. The Thrift Server gives the JDBC metadata
    (`getSchemas`, `getTables`) of the session catalog only, not of the Iceberg catalogs.
+   For a navigator that shows the Iceberg tables, use Trino (see
+   [Connect DBeaver to Trino](#connect-dbeaver-to-trino)).
 6. Use SQL to find the tables:
    ```sql
    SHOW NAMESPACES IN nessie;
@@ -375,6 +383,78 @@ do not use it.
    `SELECT * FROM tpch_marts.revenue_by_nation` works. Do not remove the semicolon in front
    of `?`: without it the driver does not read `auth=noSasl`, and the server closes the
    connection. The catalog must have the namespace `default` (`make dbt` creates it).
+
+## Trino
+
+Trino is an optional SQL engine on the same Iceberg catalogs as Spark. It reads and writes
+the same tables: a table that Spark writes is visible in Trino at once, and the reverse.
+
+Use Trino for:
+
+- a JDBC navigator (DBeaver): Trino shows each catalog that is on, its namespaces and its
+  tables. The Spark Thrift Server cannot do this (`NOTES.md` F9);
+- interactive SQL (`make sql-trino`).
+
+Use the Spark Thrift Server for dbt (`make dbt`).
+
+Trino has **no authentication**. The port 8080 is published on `127.0.0.1` of the VM only.
+Any user or process on the VM can connect and read or write every table of the catalogs
+that are on. Start the profile `trino` only on a host that you do not share.
+
+On AWS, Trino uses the instance profile of the VM for `nessie` and `rest`, and the
+credentials that Polaris vends for `polaris`.
+
+Not verified with a live run: Trino on the RustFS variant. Only the Compose configuration is
+checked statically. `tests/trino-service.sh` covers it when you run it on a RustFS host.
+
+### Start Trino
+
+1. Add `trino` to `COMPOSE_PROFILES` in `.env`, for example `nessie,trino`.
+2. Run `make up`. Trino starts after the catalogs. Trino loads the catalogs at startup:
+   after a change of `COMPOSE_PROFILES`, run `make up` again.
+3. Run `make sql-trino`, then `SHOW CATALOGS;`.
+
+On the VM with 8 GB, do not start `trino` and `thrift` together (see
+[Memory per service](#memory-per-service)).
+
+### Connect DBeaver to Trino
+
+1. On a remote VM, open the tunnel for port 8080 (see [SSH tunnel](#ssh-tunnel)):
+   `-L 8080:127.0.0.1:8080`.
+2. In DBeaver, create a connection of type **Trino** (DBeaver downloads the driver).
+3. Set the JDBC URL to `jdbc:trino://localhost:8080`. Set any user name. Leave the password
+   empty.
+4. Open the navigator. It shows the catalogs that are on (`nessie`, `polaris`, `rest`), their
+   namespaces and their tables.
+
+### Memory per service
+
+| Service | Limit | Set by |
+|---|---|---|
+| `spark` (JupyterLab, `spark-sql`, the ELT jobs) | no container limit; driver heap 4 GB | `spark/conf/spark-defaults.conf` |
+| `spark-thrift` (profile `thrift`) | no container limit; driver heap 4 GB | `spark/conf/spark-defaults.conf` |
+| `trino` (profile `trino`) | 3 GB container, 2 GB heap | `TRINO_MEM_LIMIT`, `TRINO_HEAP` in `.env` |
+| `nessie` | 1 GB | `docker-compose.yml` |
+| `polaris` | 1 GB | `docker-compose.yml` |
+| `rest-fixture` | 512 MB | `docker-compose.yml` |
+| `postgres`, `rustfs` | no limit (small) | — |
+
+Recommended combinations:
+
+- **8 GB host** (the EC2 VM of the lab): Trino with all three catalogs and without `thrift`
+  fits. Observed with `docker stats` during the test run of 2026-11-11 (profiles
+  `nessie,polaris,baseline,trino`): `trino` 704 MiB, `spark` 514 MiB, `nessie` 276 MiB,
+  `polaris` 240 MiB, `rest-fixture` 115 MiB, `postgres` 69 MiB. Alternatively, start
+  `thrift` without Trino. Keep the Trino defaults.
+- **16 GB host or more**: all services on. For larger data, increase `TRINO_MEM_LIMIT` and
+  `TRINO_HEAP` together (for example `6g` and `5g`). Keep the heap about 1 GB below the
+  limit.
+
+Symptoms when the memory is not sufficient:
+
+- Docker stops a container: `docker compose ps` shows `exited (137)` (out of memory).
+- Trino stops a query with an error `Query exceeded per-node memory limit`. The query limit
+  is 30% of `TRINO_HEAP`.
 
 ## On-premise with RustFS
 
@@ -395,7 +475,7 @@ intact, so you can go back to it.
 3. In `.env`, set the six `RUSTFS_*_KEY` values. Each secret key has at least 8 characters.
    `S3_BUCKET` is the name of a local bucket in RustFS: you can keep the AWS value.
 4. Run `make up`. The service `rustfs-setup` creates the bucket, the user `polaris` (Polaris
-   STS calls) and the user `lab` (Spark, Nessie, `rest`).
+   STS calls) and the user `lab` (Spark, Trino, Nessie, `rest`).
 5. Run `make smoke-test`.
 
 To go back to AWS, comment out `COMPOSE_FILE` and run `make up`. If you changed `S3_BUCKET`
@@ -448,6 +528,8 @@ data directory, then run `make up`.
 | [Plan: Nessie CLI](docs/superpowers/plans/2026-10-29-nessie-cli.md) | Task-by-task implementation plan |
 | [Design spec: RustFS variant](docs/superpowers/specs/2026-10-29-rustfs-onprem-design.md) | On-premise variant with RustFS |
 | [Plan: RustFS variant](docs/superpowers/plans/2026-10-29-rustfs-onprem.md) | Task-by-task implementation plan |
+| [Design spec: Trino](docs/superpowers/specs/2026-11-11-trino-design.md) | Optional Trino service on the Iceberg catalogs |
+| [Plan: Trino](docs/superpowers/plans/2026-11-11-trino.md) | Task-by-task implementation plan |
 | [Handoff](docs/HANDOFF.md) | Current state and decisions (for the next work session) |
 
 ## License
