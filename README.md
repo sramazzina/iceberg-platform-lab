@@ -98,6 +98,7 @@ Do these steps once. Steps 1-2 run in CloudShell, the other steps on the VM.
 
 1. Set `COMPOSE_PROFILES` in `.env`: `polaris`, `nessie`, `baseline` (Spark catalog `rest`),
    or a list (`nessie,polaris`, no spaces). Leave it empty for no catalog.
+   Add `thrift` for the Spark Thrift Server, `trino` for Trino (see [Trino](#trino)).
 2. Run `make up`. It starts the catalogs in `COMPOSE_PROFILES` and stops the others.
    The data of a stopped catalog stays (Postgres database and S3 prefix).
 3. Run `make smoke-test`. It tests the base stack and each catalog that is on.
@@ -160,6 +161,7 @@ with each catalog.
 | `make reset` | Like `make down`, and also **deletes the volumes**: all Polaris and Nessie metadata (Postgres) and the baseline catalog (SQLite) are lost. The S3 files stay |
 | `make smoke-test` | Runs the acceptance tests of the base stack and of each catalog that is on |
 | `make sql-polaris`, `make sql-nessie`, `make sql-rest` | Opens a Spark SQL shell on the catalog |
+| `make sql-trino` | Opens the Trino CLI (needs the profile `trino`). The catalogs that are on are available as `nessie`, `polaris`, `rest` |
 | `make nessie-cli` | Opens the Nessie CLI on the Nessie service (the catalog `nessie` must be on) |
 | `make logs` | Shows the logs of the running services |
 | `make lint` | Static checks: script syntax, JSON, Compose file, no secret in tracked files |
@@ -363,6 +365,8 @@ do not use it.
    the Iceberg tables: it shows only the schemas `default` and `global_temp` of the Spark
    session catalog, and they are empty. The Thrift Server gives the JDBC metadata
    (`getSchemas`, `getTables`) of the session catalog only, not of the Iceberg catalogs.
+   For a navigator that shows the Iceberg tables, use Trino (see
+   [Connect DBeaver to Trino](#connect-dbeaver-to-trino)).
 6. Use SQL to find the tables:
    ```sql
    SHOW NAMESPACES IN nessie;
@@ -375,6 +379,75 @@ do not use it.
    `SELECT * FROM tpch_marts.revenue_by_nation` works. Do not remove the semicolon in front
    of `?`: without it the driver does not read `auth=noSasl`, and the server closes the
    connection. The catalog must have the namespace `default` (`make dbt` creates it).
+
+## Trino
+
+Trino is an optional SQL engine on the same Iceberg catalogs as Spark. It reads and writes
+the same tables: a table that Spark writes is visible in Trino at once, and the reverse.
+
+Use Trino for:
+
+- a JDBC navigator (DBeaver): Trino shows each catalog that is on, its namespaces and its
+  tables. The Spark Thrift Server cannot do this (`NOTES.md` F9);
+- interactive SQL (`make sql-trino`).
+
+Use the Spark Thrift Server for dbt (`make dbt`).
+
+Trino has **no authentication**. The port 8080 is published on `127.0.0.1` of the VM only.
+Any user or process on the VM can connect and read or write every table of the catalogs
+that are on. Start the profile `trino` only on a host that you do not share.
+
+On AWS, Trino uses the instance profile of the VM for `nessie` and `rest`, and the
+credentials that Polaris vends for `polaris`.
+
+### Start Trino
+
+1. Add `trino` to `COMPOSE_PROFILES` in `.env`, for example `nessie,trino`.
+2. Run `make up`. Trino starts after the catalogs. Trino loads the catalogs at startup:
+   after a change of `COMPOSE_PROFILES`, run `make up` again.
+3. Run `make sql-trino`, then `SHOW CATALOGS;`.
+
+On the VM with 8 GB, do not start `trino` and `thrift` together (see
+[Memory per service](#memory-per-service)).
+
+### Connect DBeaver to Trino
+
+1. On a remote VM, open the tunnel for port 8080 (see [SSH tunnel](#ssh-tunnel)):
+   `-L 8080:127.0.0.1:8080`.
+2. In DBeaver, create a connection of type **Trino** (DBeaver downloads the driver).
+3. Set the JDBC URL to `jdbc:trino://localhost:8080`. Set any user name. Leave the password
+   empty.
+4. Open the navigator. It shows the catalogs that are on (`nessie`, `polaris`, `rest`), their
+   namespaces and their tables.
+
+### Memory per service
+
+| Service | Limit | Set by |
+|---|---|---|
+| `spark` (JupyterLab, `spark-sql`, the ELT jobs) | no container limit; driver heap 4 GB | `spark/conf/spark-defaults.conf` |
+| `spark-thrift` (profile `thrift`) | no container limit; driver heap 4 GB | `spark/conf/spark-defaults.conf` |
+| `trino` (profile `trino`) | 3 GB container, 2 GB heap | `TRINO_MEM_LIMIT`, `TRINO_HEAP` in `.env` |
+| `nessie` | 1 GB | `docker-compose.yml` |
+| `polaris` | 1 GB | `docker-compose.yml` |
+| `rest-fixture` | 512 MB | `docker-compose.yml` |
+| `postgres`, `rustfs` | no limit (small) | — |
+
+Recommended combinations:
+
+- **8 GB host** (the EC2 VM of the lab): Trino with all three catalogs and without `thrift`
+  fits. Observed with `docker stats` during the test run of 2026-11-11 (profiles
+  `nessie,polaris,baseline,trino`): `trino` 704 MiB, `spark` 514 MiB, `nessie` 276 MiB,
+  `polaris` 240 MiB, `rest-fixture` 115 MiB, `postgres` 69 MiB. Alternatively, start
+  `thrift` without Trino. Keep the Trino defaults.
+- **16 GB host or more**: all services on. For larger data, increase `TRINO_MEM_LIMIT` and
+  `TRINO_HEAP` together (for example `6g` and `5g`). Keep the heap about 1 GB below the
+  limit.
+
+Symptoms when the memory is not sufficient:
+
+- Docker stops a container: `docker compose ps` shows `exited (137)` (out of memory).
+- Trino stops a query with an error `Query exceeded per-node memory limit`. The query limit
+  is 30% of `TRINO_HEAP`.
 
 ## On-premise with RustFS
 

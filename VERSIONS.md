@@ -18,6 +18,7 @@ The tag `latest` is never used.
 | Iceberg REST fixture | 1.10.1 | `REST_FIXTURE_IMAGE=apache/iceberg-rest-fixture:1.10.1` | <https://hub.docker.com/r/apache/iceberg-rest-fixture/tags> |
 | RustFS | 1.0.4 | `RUSTFS_IMAGE=rustfs/rustfs:1.0.4` | <https://github.com/rustfs/rustfs/releases/tag/1.0.4>, <https://hub.docker.com/r/rustfs/rustfs/tags> |
 | RustFS CLI `rc` | 0.1.36 | `RUSTFS_RC_IMAGE=rustfs/rc:v0.1.36` | <https://github.com/rustfs/cli/releases>, <https://hub.docker.com/r/rustfs/rc/tags> |
+| Trino | 484 (Java 25 in the image; Apache-2.0) | `TRINO_IMAGE=trinodb/trino:484` | <https://github.com/trinodb/trino/releases>, <https://hub.docker.com/r/trinodb/trino/tags> |
 | PostgreSQL | 18.6 | `POSTGRES_IMAGE=postgres:18.6` | <https://hub.docker.com/_/postgres> |
 | curl + jq job image | alpine/curl 8.22.0 (jq added with `apk`) | `POLARIS_SETUP_IMAGE=alpine/curl:8.22.0` | <https://hub.docker.com/r/alpine/curl/tags> |
 | AWS CLI v2 | 2.39.0 | `AWSCLI_VERSION` | <https://raw.githubusercontent.com/aws/aws-cli/v2/CHANGELOG.rst> |
@@ -34,6 +35,7 @@ The tag `latest` is never used.
 | DuckDB | 1.5.6 (MIT; 2.0.0 needs Python 3.11) | `spark/requirements.txt` | <https://pypi.org/project/duckdb/1.5.6/> |
 
 RustFS and `rc` were verified on 2026-10-29 (on-premise variant).
+Trino was verified on 2026-11-11 (latest release, 2026-10-16).
 
 The dbt and DuckDB packages were verified on 2026-10-30. Their dependencies are permissive
 (Apache-2.0, MIT, BSD, ISC, PSF, MPL-2.0), with one exception: `text-unidecode` 1.3 (from
@@ -60,6 +62,7 @@ by `dbt debug` and `dbt deps`, and it is not linked into the project.
 | JupyterLab 4.6.4 Python requirement | `>=3.10` | <https://pypi.org/project/jupyterlab/4.6.4/> |
 | REST fixture tag for Iceberg 1.11 | Not published; 1.10.1 is the newest versioned tag | <https://hub.docker.com/r/apache/iceberg-rest-fixture/tags> |
 | Nessie CLI 0.109.0 license and Java | Apache-2.0; runs on the Java 17 of the `spark` image (checked 2026-10-29) | <https://repo1.maven.org/maven2/org/projectnessie/nessie/nessie/0.109.0/nessie-0.109.0.pom> |
+| Trino 484 reads Iceberg 1.11.0 tables written by Spark 4.1.3 | Confirmed on the AWS stack, 2026-11-11 (`NOTES.md` F10) | `tests/trino-service.sh` |
 
 Polaris and Nessie do not document tests with Spark 4.1. They are used through the Iceberg
 REST protocol with the same Iceberg version they are built against. The smoke tests of
