@@ -1,9 +1,9 @@
 # Handoff — Iceberg catalog lab
 
-- Date: 2026-11-05
-- From: Claude Code session on the workstation (WSL2, Docker Desktop, RustFS variant):
-  local setup for study, repository rename, issue #52, Power BI analysis (#53), root cause
-  of #50
+- Date: 2026-11-11
+- From: Claude Code session on the EC2 VM: `SparkSessionCatalog` spike and closure of #50,
+  new issue #54 (Trino). Earlier session (workstation, 2026-11-05): repository rename,
+  issue #52, Power BI analysis (#53), root cause of #50
 - To: the next Claude Code session (Linux server, workstation or EC2 VM)
 
 ## Where we are
@@ -17,7 +17,7 @@
 | ELT with dbt | Merged (PR #49, merge commit `72b81ca`, 2026-11-03). Branch `feat/dbt-elt` deleted (local and remote); SDD workspace deleted |
 | dbt spec | `docs/superpowers/specs/2026-10-30-dbt-elt-design.md` |
 | dbt plan | `docs/superpowers/plans/2026-10-30-dbt-elt.md` — Tasks 29-36, all done |
-| GitHub issues | #40 … #48 closed, all checklists ticked. #50 open (analysis). #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done) |
+| GitHub issues | #40 … #48 and #50 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #54 open (Trino, not started) |
 | Repository name | `sramazzina/iceberg-platform-lab` since 2026-11-05 (was `iceberg-platform-poc`; GitHub redirects the old name) |
 | CI | The repository has no GitHub Actions workflow |
 
@@ -64,11 +64,21 @@ Changes of 2026-11-05 (workstation):
   Iceberg catalogs are DataSource V2 catalog plugins, so they never appear in a navigator
   (DBeaver, Power BI). `spark.sql.defaultCatalog` does not change this. Spark 4.3 adds
   `spark.sql.thriftServer.catalogMetadata.enabled` (default `false`): schemas only, tables and
-  columns still from `spark_catalog` (SPARK-57518, follow-up PR #57468 open). Open point in
-  #50: Iceberg `SparkSessionCatalog` as `spark_catalog` (the source indicates it does not help;
-  a test is described in the issue).
+  columns still from `spark_catalog` (SPARK-57518, follow-up PR #57468 open).
 - Terminology agreed with the user: "V1"/"V2" catalogs = generations of the Spark catalog API,
   not Iceberg format versions. Say so explicitly in every text.
+
+Changes of 2026-11-11 (EC2 VM):
+- Issue #50 closed. Spike on the VM: Iceberg `SparkSessionCatalog` as `spark_catalog` does not
+  make the navigator show the Iceberg tables (and hides the Nessie namespaces from SQL).
+  Findings and recommendation in `NOTES.md` F9 (commit `39c2b4a`). Decision: keep the
+  three-part-name workaround; look again at the Thrift Server after the follow-up of SPARK-57518.
+- Issue #54 (`enhancement`, `priority: medium`): add Trino as an optional SQL engine on the
+  Iceberg REST catalogs, so that DBeaver can browse the catalogs. A customer with a similar
+  architecture connects DBeaver to Trino. Trino is **not** in the lab today (only documentary
+  analysis in #53, approach 2). Next step: brainstorming with the user.
+- New rule from the user: `NOTES.md` is committed directly to `main` (no branch, no PR), like
+  `README.md`, `CHANGELOG.md` and `docs/HANDOFF*.md`.
 
 ## Resume here
 
@@ -76,9 +86,7 @@ Changes of 2026-11-05 (workstation):
    "Rename of the clone" below before any other work.
 1. No work is in progress.
 2. Candidate goals, to choose with the user:
-   - issue #50: the root cause is known (see above); decide with the user what to do (keep the
-     three-part-name workaround, test `SparkSessionCatalog`, another SQL engine, or wait for
-     Spark upstream). Analysis only until the user decides;
+   - issue #54: Trino as an optional SQL engine (start with `superpowers:brainstorming`);
    - issue #53: the documentary analysis is complete; any test in Power BI needs the user
      (Desktop and gateway run on Windows);
    - issue #52: Python upgrade of the `spark` image.
@@ -127,6 +135,7 @@ the absolute path of the directory, so the stack must stop before the rename.
   Windows connects through the SSH tunnel with
   `jdbc:hive2://127.0.0.1:10000/;auth=noSasl;?spark.sql.defaultCatalog=nessie`.
 - No `tpch_` data is left (cleaned by the user).
+- In the shell `cat` is an alias for a missing `bat` (as on the workstation): use `command cat`.
 - The VM role can only **list** under `polaris/`: drop every Polaris table with
   `DROP TABLE ... PURGE`; a left file must be deleted by the user from CloudShell.
 - SSH tunnel from Windows: the key file must be readable only by the user (`icacls … /inheritance:r`,
@@ -182,8 +191,7 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ## Open points to watch
 
-- Issue #50: DBeaver navigator and the Iceberg catalogs (analysis). Root cause found
-  (2026-11-05); open point `SparkSessionCatalog`.
+- Issue #54 (medium priority): Trino as an optional SQL engine. Not started.
 - Issue #53 (low priority): Power BI analysis. Documentary findings complete; open points need
   tests by the user in Power BI Desktop / gateway.
 - Issue #52 (medium priority): upgrade the Python runtime of the `spark` image (Python 3.10
@@ -204,5 +212,5 @@ the absolute path of the directory, so the stack must stop before the rename.
 ```text
 Read docs/HANDOFF.md (on main). The repository is now iceberg-platform-lab. Follow
 "Resume here": rename the old clone if needed, then ask the user which goal to take:
-issue #50 (root cause known), #53 (Power BI analysis) or #52 (Python upgrade).
+issue #54 (Trino), #53 (Power BI analysis) or #52 (Python upgrade).
 ```
