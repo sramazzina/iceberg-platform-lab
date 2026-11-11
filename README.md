@@ -258,6 +258,8 @@ Session Manager plugin must be installed on your machine.
 | `make smoke-test` fails on `catalog-smoke.sh polaris` with `files left under ...` | A Polaris table was dropped without its files | Delete the listed files from CloudShell (`aws s3 rm`); the VM role cannot delete under `polaris/` |
 | `make up` warns `The "NESSIE_CLI_VERSION" variable is not set`, and the Spark build fails on the Nessie CLI download (HTTP 404) | `.env` was made before the Nessie CLI was added, so it has no `NESSIE_CLI_VERSION` and `NESSIE_CLI_SHA1` | Copy the two lines `NESSIE_CLI_VERSION=...` and `NESSIE_CLI_SHA1=...` from `.env.example` to `.env`, then run `make up` |
 | `rustfs` is not healthy, and `ls -ld data/rustfs` shows the owner `root` | Docker created the data directory as root, because the stack was started without `make up` | Run `sudo chown $(id -u) data/rustfs` (or the `RUSTFS_DATA_DIR` directory), then `make up` |
+| The SSH tunnel prints `channel 2: open failed: connect failed: Connection refused` when a JDBC client connects to port 10000 | The tunnel works, but no service listens on port 10000 of the VM: the profile `thrift` is off | Add `thrift` to `COMPOSE_PROFILES` in `.env` (for example `nessie,thrift`), then run `make up` |
+| A JDBC client says `Could not open client transport ... Socket is closed by peer`, and `docker compose logs spark-thrift` says `Missing version in readMessageBegin, old client?` | The driver did not read `auth=noSasl` in the URL, so it used SASL, and the server (`NOSASL`) closed the connection. Usual errors: no `;` in front of `auth` (`/auth=noSasl`), or no `;` in front of `?` (`;auth=noSasl?...`) | Use `jdbc:hive2://localhost:10000/;auth=noSasl` or `jdbc:hive2://localhost:10000/;auth=noSasl;?spark.sql.defaultCatalog=nessie`. See [Connect a JDBC client (DBeaver)](#connect-a-jdbc-client-dbeaver) |
 | A service is not healthy after `make up` | A service did not start | Run `docker compose ps -a`, then `docker compose logs <service>` |
 
 ## ELT with dbt
@@ -347,7 +349,16 @@ do not use it.
 2. On a remote VM, open the tunnel for port 10000 (see [SSH tunnel](#ssh-tunnel)).
 3. In DBeaver, create a connection of type **Apache Hive** (DBeaver downloads the driver).
 4. Set the JDBC URL to `jdbc:hive2://localhost:10000/;auth=noSasl`, user `spark`, no
-   password.
+   password. Write the `;` in front of `auth`. If DBeaver makes the URL from the host and
+   port fields, check the URL preview.
+
+   Why `auth=noSasl` is necessary: the server runs with
+   `hive.server2.authentication=NOSASL`, so it expects plain Thrift messages from the first
+   byte. By default, the Hive JDBC driver uses SASL: it starts with a SASL negotiation and
+   puts each message in a SASL frame. If the driver does not read `auth=noSasl`, the two
+   sides do not use the same protocol. The server logs `Missing version in
+   readMessageBegin, old client?` and closes the connection. The client shows `Socket is
+   closed by peer`.
 5. Open an SQL editor on the connection. The database navigator of DBeaver does not show
    the Iceberg tables: it shows only the schemas `default` and `global_temp` of the Spark
    session catalog, and they are empty. The Thrift Server gives the JDBC metadata
