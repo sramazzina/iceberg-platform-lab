@@ -10,6 +10,8 @@ if docker compose config --services | grep -qx rustfs; then tests/rustfs-setup.s
 tests/s3-access.sh
 # The Spark Thrift Server (profile thrift).
 if docker compose config --services | grep -qx spark-thrift; then tests/thrift-service.sh; fi
+# Trino (profile trino).
+if docker compose config --services | grep -qx trino; then tests/trino-service.sh; fi
 
 services=$(docker compose config --services)
 ran=0
