@@ -114,6 +114,26 @@ Each entry: what the requirement says, what the lab does, and why.
   Thrift Server gives JDBC access (DBeaver); the `session` method does not.
 - Spec: `docs/superpowers/specs/2026-10-30-dbt-elt-design.md`. Findings: F7, F8.
 
+### D17 — Trino without authentication
+- Requirement: not in the original requirements; issue #54 (user request of 2026-11-11).
+- Lab: the optional service `trino` (profile `trino`) uses HTTP on `127.0.0.1:8080`, with no
+  password and no TLS. Any user or process on the VM can read and write every table of the
+  catalogs that are on.
+- Why: the lab is a single-user study platform; access from a laptop goes through the SSH
+  tunnel or SSM. TLS and passwords are deferred to the Power BI work (issue #53), which needs
+  them.
+- Spec: `docs/superpowers/specs/2026-11-11-trino-design.md`. Finding: F10.
+
+### D18 — Trino reads and writes, with its own Polaris principal
+- Requirement: issue #54.
+- Lab: Trino reads and writes the same tables as Spark. On `polaris` it authenticates as the
+  dedicated principal `trino_user` (principal role `trino_role`, catalog role `lab_admin`),
+  never as root. `polaris-setup` creates `trino_user` always, also when the profile `trino`
+  is off, and writes `secrets/trino_user.env` (mode 600).
+- Why: one principal per engine keeps the grants and the credential resets separate.
+  `polaris-setup` does not need to know which engines are on.
+- Spec: `docs/superpowers/specs/2026-11-11-trino-design.md`, section 8. Finding: F10.
+
 ## Findings
 
 ### F1 — Nessie S3 credentials (Nessie 0.109.0, checked 2026-10-28)
@@ -332,6 +352,62 @@ Approaches and recommendation:
   (`SELECT * FROM nessie.<namespace>.<table>`, `SHOW TABLES IN nessie.<namespace>`) or the
   URL with `spark.sql.defaultCatalog` (README, DBeaver section). Examine the Spark
   Thrift Server again when the follow-up of SPARK-57518 is released.
+- Update 2026-11-11: Trino is now an optional service of the lab (F10). Its JDBC navigator
+  shows the Iceberg catalogs, namespaces and tables.
+
+### F10 — Trino 484 on the Iceberg REST catalogs (checked 2026-11-11)
+
+Issues #54, #56 … #62. Image `trinodb/trino:484` (Java 25, Apache-2.0). EC2 VM, 8 GB, AWS
+stack, profiles `nessie,polaris,baseline,trino`.
+
+Image (issue #56):
+- The image has no `ENTRYPOINT`; `CMD` is `launcher run --etc-dir /etc/trino`, user
+  `trino:trino` (UID 1000). `bash`, `cat`, `cp`, `mkdir`, `rm` and `curl` are present; `grep`
+  and `cut` are not.
+- Trino starts with an arbitrary UID (`--user 1234`) and the configuration in
+  `/tmp/trino-etc`. The lab runs it with `LAB_UID`, so that it can read
+  `secrets/trino_user.env` (mode 600).
+- `/usr/lib/trino/bin/health-check` reads the port from `/etc/trino/config.properties`, not
+  from `/tmp/trino-etc`. The property is absent there, so the script falls back to 8080. The
+  Compose health check relies on this fallback: if the port changes, the health check must
+  change too.
+
+Points that the spec marked NOT CONFIRMED (section 4), all confirmed by
+`tests/trino-service.sh` on the AWS stack:
+- Polaris: OAuth2 as `trino_user` (`iceberg.rest-catalog.security=OAUTH2`) and vended
+  credentials work. Trino masks the credential in its log (`[REDACTED]`).
+- Nessie: the Iceberg REST endpoint `/iceberg/main` works.
+- Rest fixture 1.10.1 works.
+- Trino reads the Iceberg 1.11.0 tables that Spark 4.1.3 writes, and Spark reads the tables
+  that Trino writes (`CREATE TABLE AS`), on all three catalogs.
+- On `nessie` and `rest` the compose file passes `AWS_ACCESS_KEY_ID` and
+  `AWS_SECRET_ACCESS_KEY` empty: the AWS SDK default chain falls back to the VM instance
+  profile. No workaround is necessary.
+
+DBeaver navigator (issue #62), checked by the user through the SSH tunnel
+(`-L 8080:127.0.0.1:8080`), Trino driver, `jdbc:trino://localhost:8080`, no password:
+- The navigator shows the catalogs `nessie`, `polaris` and `rest` and their namespaces.
+- It shows the tables, their columns and their data (a table written by Spark in each
+  catalog). This closes the gap of F9 for a JDBC navigator.
+- A namespace with no table shows no table: the test scripts delete their tables at the
+  end. DBeaver caches the metadata: refresh the connection (F5) after a change.
+
+Memory (`docker stats`, during `tests/trino-service.sh`): trino 704 MiB / 3 GiB, spark
+514 MiB, nessie 276 MiB / 1 GiB, polaris 240 MiB / 1 GiB, rest-fixture 115 MiB / 512 MiB,
+postgres 69 MiB. All three catalogs and Trino fit on the 8 GB VM without `thrift`.
+
+Deviations from the spec (plan `docs/superpowers/plans/2026-11-11-trino.md`):
+1. The S3 file system property of Trino 484 is `fs.s3.enabled`, not `fs.native-s3.enabled`.
+2. The query memory limits keep the Trino defaults (`query.max-memory-per-node` and
+   `memory.heap-headroom-per-node` = 30% of the heap), so they follow `TRINO_HEAP`.
+3. The health check is the script of the image (see above), not a custom `curl` command.
+4. `spark/entrypoint.sh` skips the profile `trino`, like `thrift`.
+5. The entrypoint reads the credentials file from `LAB_TRINO_SECRETS` (default
+   `/run/lab-secrets/trino_user.env`), so that `tests/trino-config.sh` can use a test file.
+6. `tests/lint.sh` runs `bash -n`, not `shellcheck` (not installed on the VM).
+
+Not verified with a live run: Trino on the RustFS variant (not configured on the EC2 VM).
+Only the Compose configuration is checked (`tests/compose-variant.sh`). Follow-up: issue #63.
 
 ## Open investigations
 
