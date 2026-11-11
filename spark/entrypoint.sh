@@ -30,8 +30,8 @@ umask 077
   for catalog in "${list[@]}"; do
     if [[ $catalog == '*' ]]; then
       echo "lab-entrypoint: COMPOSE_PROFILES='*' is not supported for Spark; list the catalogs" >&2
-    elif [[ $catalog == thrift ]]; then
-      # Profile of the Spark Thrift Server (service spark-thrift), not a catalog.
+    elif [[ $catalog == thrift || $catalog == trino ]]; then
+      # Profiles of services (spark-thrift, trino), not catalogs.
       continue
     elif [[ -f $templates/catalogs/$catalog.conf ]]; then
       printf '\n'

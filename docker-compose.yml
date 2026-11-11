@@ -254,6 +254,43 @@ services:
       timeout: 5s
       retries: 60
 
+  # Trino (spec 2026-11-11-trino-design, section 6): an optional SQL engine on the same
+  # Iceberg catalogs as Spark. A JDBC navigator shows its catalogs, namespaces and tables
+  # (NOTES F9). Trino reads and writes. No authentication: the port is published on
+  # 127.0.0.1 only. The entrypoint writes the configuration for the catalogs that are on.
+  trino:
+    image: ${TRINO_IMAGE}
+    profiles: [trino]
+    # The host UID, so that Trino can read secrets/trino_user.env (mode 600).
+    user: "${LAB_UID:-1000}"
+    depends_on: *spark-depends-on
+    # Setting the entrypoint clears the CMD of the image.
+    entrypoint: ["/lab/entrypoint.sh"]
+    environment:
+      LAB_CATALOGS: ${COMPOSE_PROFILES:-}
+      TRINO_HEAP: ${TRINO_HEAP:-2g}
+      AWS_REGION: ${AWS_REGION}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-false}
+      # Empty on AWS: the S3 client then uses the VM instance profile through IMDSv2.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    # README.md, "Memory per service": combinations for 8 GB and 16 GB hosts.
+    mem_limit: ${TRINO_MEM_LIMIT:-3g}
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./trino:/lab:ro
+      - ./secrets:/run/lab-secrets:ro
+    healthcheck:
+      # The script of the image: GET /v1/info, healthy when the server is no longer starting.
+      # It reads the port from /etc/trino/config.properties (not /tmp/trino-etc) and falls
+      # back to 8080 when the property is absent; this service relies on that fallback.
+      test: ["CMD", "/usr/lib/trino/bin/health-check"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
 volumes:
   pgdata:
   rest-fixture-data:
