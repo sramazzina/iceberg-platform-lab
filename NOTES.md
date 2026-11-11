@@ -281,6 +281,58 @@ All checks ran on the RustFS variant, on a Linux server with Docker Engine 29.2.
   ~5 min, rest ~3 min. AWS stack on the EC2 VM (2026-11-03, after the beeline fix): nessie
   6 min 55 s, polaris 9 min 32 s, rest 7 min 40 s.
 
+### F9 — JDBC navigator and the Iceberg catalogs (Spark 4.1.3, checked 2026-11-11)
+
+Issue #50. "V1" and "V2" are the two generations of the **Spark catalog API** (V1 = the
+built-in `SessionCatalog`, `spark_catalog`; V2 = DataSource V2 `CatalogPlugin`, used by the
+Iceberg `SparkCatalog`). They are not Iceberg table format versions.
+
+Cause (read in the Spark source, `branch-4.1`):
+- The Thrift Server JDBC metadata operations (`SparkGetSchemasOperation`,
+  `SparkGetTablesOperation`, `SparkGetColumnsOperation`) read only the V1 `SessionCatalog`
+  (`SparkOperation.catalog = sessionState.catalog`). `SparkGetCatalogsOperation` returns no
+  row.
+- The lab catalogs `nessie`, `polaris` and `rest` are V2 catalogs. A navigator that builds its
+  tree from these calls (DBeaver, Power BI) never shows them.
+- `spark.sql.defaultCatalog` does not change the metadata calls.
+- Spark 4.3 adds `spark.sql.thriftServer.catalogMetadata.enabled` (SPARK-57518, default
+  `false`): `getSchemas` lists the namespaces of a V2 current catalog, but `getTables` and
+  `getColumns` still read `spark_catalog`. Follow-up work: Spark PR #57468 (open on
+  2026-11-05).
+
+Reproduced with beeline (Hive JDBC 2.3.10) on the EC2 VM, profiles `nessie,thrift`:
+- `!metadata getSchemas` returns `default` and `global_temp`. `!tables` returns no row.
+  `SHOW NAMESPACES IN nessie` returns `default` and `smoke`.
+- The URL with `;?spark.sql.defaultCatalog=nessie` gives the same metadata result.
+
+Spike: Iceberg `SparkSessionCatalog` as `spark_catalog` (throw-away Thrift Server on port
+10001, every `spark.sql.catalog.nessie.*` property copied to `spark_catalog`; removed after
+the test):
+- `CREATE TABLE spike50.t ... USING iceberg` and `INSERT` work. The table is in Nessie
+  (`nessie.commit.ref=main`; `SHOW TABLES IN nessie.spike50` on the main server lists it).
+- Namespace operations go to the V1 session catalog (in-memory), not to Nessie.
+  `SHOW NAMESPACES` returns only `default`, not the Nessie namespaces. The namespace must
+  exist in both places: in Nessie for the table, in the V1 catalog for `CREATE TABLE`.
+- `!metadata getSchemas` lists only the V1 databases. `!tables` and `!metadata getColumns`
+  return no row for the Iceberg table.
+- `SHOW TABLES IN spike50` also returns no row: the table list comes from the V1 catalog.
+- Result: `SparkSessionCatalog` does not make the navigator show the Iceberg tables. It also
+  hides the Nessie namespaces from SQL. It can cover only one catalog.
+
+Approaches and recommendation:
+- Spark 4.1 configuration: no setting shows the V2 catalogs in the navigator.
+- Hive Metastore as V1 catalog (not tested): the navigator would show the tables of the
+  metastore only. The Iceberg REST catalogs (`nessie`, `polaris`, `rest`) stay V2. Not
+  examined further: it changes the lab architecture and does not show the REST catalogs.
+- DBeaver (not tested): with the Hive JDBC driver the navigator tree comes from the metadata
+  calls above. No DBeaver setting that builds the tree with SQL was found.
+- Another SQL engine with catalog-aware metadata (for example Trino, issue #53 approach 2)
+  shows the Iceberg catalogs as JDBC catalogs. It is a new service in the lab.
+- Recommendation: keep the workaround. Use SQL with three-part names
+  (`SELECT * FROM nessie.<namespace>.<table>`, `SHOW TABLES IN nessie.<namespace>`) or the
+  URL with `spark.sql.defaultCatalog` (README, DBeaver section). Examine the Spark
+  Thrift Server again when the follow-up of SPARK-57518 is released.
+
 ## Open investigations
 
 Filled in during the later phases.
