@@ -1,9 +1,10 @@
 # Handoff — Iceberg catalog lab
 
 - Date: 2026-11-11
-- From: Claude Code session on the EC2 VM: `SparkSessionCatalog` spike and closure of #50,
-  new issue #54 (Trino). Earlier session (workstation, 2026-11-05): repository rename,
-  issue #52, Power BI analysis (#53), root cause of #50
+- From: Claude Code session on the EC2 VM: brainstorming and design spec of #54 (Trino), new
+  issue #55. Earlier on 2026-11-11: `SparkSessionCatalog` spike and closure of #50, new issue
+  #54. Earlier session (workstation, 2026-11-05): repository rename, issue #52, Power BI
+  analysis (#53), root cause of #50
 - To: the next Claude Code session (Linux server, workstation or EC2 VM)
 
 ## Where we are
@@ -17,7 +18,8 @@
 | ELT with dbt | Merged (PR #49, merge commit `72b81ca`, 2026-11-03). Branch `feat/dbt-elt` deleted (local and remote); SDD workspace deleted |
 | dbt spec | `docs/superpowers/specs/2026-10-30-dbt-elt-design.md` |
 | dbt plan | `docs/superpowers/plans/2026-10-30-dbt-elt.md` — Tasks 29-36, all done |
-| GitHub issues | #40 … #48 and #50 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #54 open (Trino, not started) |
+| GitHub issues | #40 … #48 and #50 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #54 open (Trino, spec done, plan next). #55 open (dbt-trino experiment, after #54) |
+| Trino spec (#54) | `docs/superpowers/specs/2026-11-11-trino-design.md`, on branch `feat/trino` only (commit `1e65e17`, not pushed) |
 | Repository name | `sramazzina/iceberg-platform-lab` since 2026-11-05 (was `iceberg-platform-poc`; GitHub redirects the old name) |
 | CI | The repository has no GitHub Actions workflow |
 
@@ -79,17 +81,39 @@ Changes of 2026-11-11 (EC2 VM):
   analysis in #53, approach 2). Next step: brainstorming with the user.
 - New rule from the user: `NOTES.md` is committed directly to `main` (no branch, no PR), like
   `README.md`, `CHANGELOG.md` and `docs/HANDOFF*.md`.
+- Issue #54: brainstorming done with the user; first checklist item ticked. Design spec
+  committed on the local branch `feat/trino` (`1e65e17`). Decisions (spec section 3):
+  - scope = Trino service, three catalogs, tests, DBeaver check, docs; the dbt-spark versus
+    dbt-trino experiment moved to the new issue #55;
+  - HTTP 8080 on `127.0.0.1`, no authentication (TLS and passwords deferred to Power BI);
+  - Trino reads **and writes**; Polaris principal `trino_user` (role `trino_role`, catalog role
+    `lab_admin`), credentials in `secrets/trino_user.env`, created by `polaris-setup`
+    (refactor into `ensure_principal`);
+  - memory: `TRINO_MEM_LIMIT` (default `3g`), `TRINO_HEAP` (default `2g`); the EC2 VM has
+    **8 GB**, so Trino and `thrift` do not run together there. The user asked for a
+    "memory per service" table in `README.md` with combinations for 8 GB and for 16 GB or more;
+  - configuration through `trino/entrypoint.sh` on the official image `trinodb/trino:484`
+    (latest release, 2026-10-16); catalog files with `${ENV:...}`; config in `/tmp/trino-etc`;
+    RustFS fragments in `trino/catalog-s3-endpoint/` (pattern of `spark/conf/s3-endpoint/`);
+  - Nessie through REST `/iceberg/main`; Trino catalog names = Spark catalog names.
+- Risk to check first in the plan (spec section 6.5): the container runs with `LAB_UID`;
+  verify that the Trino image starts with an arbitrary UID.
 
 ## Resume here
 
 0. On every machine with an old clone (Linux server, EC2 VM), do the rename steps in
    "Rename of the clone" below before any other work.
-1. No work is in progress.
-2. Candidate goals, to choose with the user:
-   - issue #54: Trino as an optional SQL engine (start with `superpowers:brainstorming`);
-   - issue #53: the documentary analysis is complete; any test in Power BI needs the user
-     (Desktop and gateway run on Windows);
-   - issue #52: Python upgrade of the `spark` image.
+1. Work in progress: issue #54 (Trino). Run `git checkout feat/trino`. The spec is there.
+2. The user reviews the spec `docs/superpowers/specs/2026-11-11-trino-design.md`. Apply the
+   requested changes, if any.
+3. Write the work plan with `superpowers:writing-plans` in
+   `docs/superpowers/plans/2026-11-11-trino.md`, commit it on `feat/trino`, create one GitHub
+   issue per plan task (link them to #54), then tick "Write the design spec and the work plan"
+   in #54.
+4. Execute the plan subagent-driven. Do not push `feat/trino` before the implementation is
+   complete; open the PR last (`Closes #54` and the task issues).
+5. Other goals, later: #55 (after #54), #53 (needs the user in Power BI), #52 (Python
+   upgrade).
 
 ## State of the Linux server
 
@@ -191,7 +215,9 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ## Open points to watch
 
-- Issue #54 (medium priority): Trino as an optional SQL engine. Not started.
+- Issue #54 (medium priority): Trino as an optional SQL engine. Spec done on `feat/trino`;
+  plan and implementation next.
+- Issue #55 (`enhancement`, `area: elt`): dbt-spark versus dbt-trino experiment. After #54.
 - Issue #53 (low priority): Power BI analysis. Documentary findings complete; open points need
   tests by the user in Power BI Desktop / gateway.
 - Issue #52 (medium priority): upgrade the Python runtime of the `spark` image (Python 3.10
@@ -210,7 +236,7 @@ the absolute path of the directory, so the stack must stop before the rename.
 ## Kick-off prompt for the next session
 
 ```text
-Read docs/HANDOFF.md (on main). The repository is now iceberg-platform-lab. Follow
-"Resume here": rename the old clone if needed, then ask the user which goal to take:
-issue #54 (Trino), #53 (Power BI analysis) or #52 (Python upgrade).
+Read docs/HANDOFF.md (on main). Follow "Resume here": issue #54 (Trino) is in progress
+on the local branch feat/trino. Ask the user for the review of the spec
+docs/superpowers/specs/2026-11-11-trino-design.md, then write the work plan.
 ```
