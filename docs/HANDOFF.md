@@ -121,9 +121,12 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ## State of the EC2 VM
 
-- On `main` at 2026-11-03; branch `feat/dbt-elt` deleted. Rename to `iceberg-platform-lab`
-  is pending (see "Rename of the clone").
-- The stack runs with the `.env` selection. No `tpch_` data is left (cleaned by the user).
+- Repository at `/home/admin/work/sramazzina/iceberg-platform-lab` (renamed 2026-11-11;
+  remote updated; no Serena config on this VM).
+- `.env`: `COMPOSE_PROFILES=nessie,thrift` (since 2026-11-11). The stack runs. DBeaver on
+  Windows connects through the SSH tunnel with
+  `jdbc:hive2://127.0.0.1:10000/;auth=noSasl;?spark.sql.defaultCatalog=nessie`.
+- No `tpch_` data is left (cleaned by the user).
 - The VM role can only **list** under `polaris/`: drop every Polaris table with
   `DROP TABLE ... PURGE`; a left file must be deleted by the user from CloudShell.
 - SSH tunnel from Windows: the key file must be readable only by the user (`icacls … /inheritance:r`,
