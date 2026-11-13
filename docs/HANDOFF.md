@@ -1,7 +1,9 @@
 # Handoff — Iceberg catalog lab
 
 - Date: 2026-11-13
-- From: Claude Code session on the workstation (2026-11-13): issue #65 (Apache Hop native
+- From: Claude Code session on the EC2 VM (2026-11-13, evening): plan of #65, Tasks 1 and 2
+  done (local commits, not pushed); Task 3 stopped by the user, to run again in full.
+  Earlier: Claude Code session on the workstation (2026-11-13): issue #65 (Apache Hop native
   Spark), brainstorming, design spec, work plan, task issues #66-#70; branch
   `feat/hop-native-spark` pushed. Execution moves to the EC2 VM.
   Earlier (EC2 VM, 2026-11-11): execution of the Trino plan (#54), PR #64 merged,
@@ -24,7 +26,7 @@
 | dbt plan | `docs/superpowers/plans/2026-10-30-dbt-elt.md` — Tasks 29-36, all done |
 | GitHub issues | #40 … #48, #50, #54 and #56-#62 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #55 open (dbt-trino experiment, now unblocked). #63 open (Trino on the RustFS variant, low priority). #65 open (Apache Hop native Spark, high priority) with task issues #66-#70 open |
 | Trino (#54) | Merged (PR #64, merge commit `dd7423f`, 2026-11-11). Branch `feat/trino` deleted (local and remote). Spec `docs/superpowers/specs/2026-11-11-trino-design.md`, plan `docs/superpowers/plans/2026-11-11-trino.md` (Tasks 1-7, all done). Decisions and findings: `NOTES.md` D17, D18, F10 |
-| Apache Hop native Spark (#65) | **In progress.** Branch `feat/hop-native-spark` (pushed, no PR): request `docs/lab-adaptation-for-hop-native-spark.md`, spec `docs/superpowers/specs/2026-11-13-hop-native-spark-design.md`, plan `docs/superpowers/plans/2026-11-13-hop-native-spark.md` (Tasks 1-5 = issues #66-#70, none started). Execution on the EC2 VM |
+| Apache Hop native Spark (#65) | **In progress.** Branch `feat/hop-native-spark` (pushed, no PR): request `docs/lab-adaptation-for-hop-native-spark.md`, spec `docs/superpowers/specs/2026-11-13-hop-native-spark-design.md`, plan `docs/superpowers/plans/2026-11-13-hop-native-spark.md` (Tasks 1-5 = issues #66-#70). Tasks 1 (#66) and 2 (#67) done, reviewed, checklists ticked; commits `5c1b453` and `d507179` are **local on the EC2 VM, not pushed**. Task 3 (#68) stopped, not done. Execution on the EC2 VM |
 | Repository name | `sramazzina/iceberg-platform-lab` since 2026-11-05 (was `iceberg-platform-poc`; GitHub redirects the old name) |
 | CI | The repository has no GitHub Actions workflow |
 
@@ -152,13 +154,34 @@ Changes of 2026-11-13 (workstation):
   version than 22.04 / 3.10, stop and ask the user (pip pins, issue #52).
 - Task 5 (#70, `needs: user`) needs the Hop-side artifacts: fat jar and sample project package.
 
+Changes of 2026-11-13 (EC2 VM, evening), plan of #65 executed subagent-driven:
+- Task 1 (#66), commit `5c1b453`: the `spark` image is on
+  `apache/spark:4.1.3-scala2.13-java21-python3-ubuntu`. Ubuntu 22.04 and Python 3.10.12 as in
+  the Java 17 image (no impact on the pip pins). The Java 17 images are removed from the VM;
+  `.env` on the VM has the Java 21 `SPARK_BASE_IMAGE`. `tests/spark-image.sh` passed.
+  The image costs about 2.6 GB: the VM disk has **5.9 GB free**.
+- Task 2 (#67), commit `d507179`: volume `./hop:/workspace/hop` on `spark`, `hop/run.sh`,
+  `make hop-run`, `tests/hop-run.sh`. Code identical to the plan. `tests/hop-run.sh` (17
+  assertions) and `make lint` passed. On a dummy jar, `spark-submit` fails with
+  `Failed to load class org.apache.hop.spark.run.MainSpark`, exit 101: the exit code reaches
+  `make`. Java 21 prints `WARNING: Using incubator modules: jdk.incubator.vector`.
+- Task 3 (#68) stopped by the user (late evening). Partial results (not complete, for
+  reference only): `tests/catalog-selection.sh`, `tests/spark-config.sh`,
+  `tests/trino-service.sh` (287 s), `tests/thrift-service.sh` and `make elt-test CATALOG=nessie`
+  (427 s, F8: 6 min 55 s) passed. `elt-test` on polaris and rest not run. The user decided to
+  run **all of Task 3 again** in the next session. The interrupted run finished its cleanup
+  (`no object left under nessie/ in a tpch_ namespace`); the VM profiles are restored
+  (`nessie,polaris,baseline,trino`, `thrift` off). #68 checklist not ticked.
+
 ## Resume here
 
 0. On every machine with an old clone (Linux server, workstation if not done), do the rename
    steps in "Rename of the clone" below before any other work.
-1. On the EC2 VM: `git fetch`, then `git switch feat/hop-native-spark`. Execute the plan
-   `docs/superpowers/plans/2026-11-13-hop-native-spark.md` subagent-driven (Tasks 1-4; Task 5
-   when the user has the Hop artifacts). Follow "Order and end of the work" at the end of the
+1. On the EC2 VM: `git switch feat/hop-native-spark` (Tasks 1-2 are local commits there, do
+   not reset the branch to `origin`). Continue the plan
+   `docs/superpowers/plans/2026-11-13-hop-native-spark.md` subagent-driven from **Task 3
+   (#68), run in full from Step 1** (user decision), then Task 4; Task 5 when the user has
+   the Hop artifacts. Check `df -h /` first (5.9 GB free at the end of 2026-11-13). Follow "Order and end of the work" at the end of the
    plan: one push, PR with `Closes #66` … `Closes #69`; `NOTES.md` D19 and F11 on `main`.
 2. Other goals, after #65:
    - #55: dbt-spark versus dbt-trino experiment (Trino is now in the lab);
@@ -209,7 +232,9 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 - Repository at `/home/admin/work/sramazzina/iceberg-platform-lab` (renamed 2026-11-11;
   remote updated; no Serena config on this VM).
-- Disk: 30 GB (grown by the user on 2026-11-11).
+- Disk: 30 GB (grown by the user on 2026-11-11); 5.9 GB free on 2026-11-13 after the Java 21
+  image.
+- `spark` image: Java 21 since 2026-11-13 (`SPARK_BASE_IMAGE` in `.env`); Java 17 images removed.
 - `.env`: `COMPOSE_PROFILES=nessie,polaris,baseline,trino` and `TRINO_IMAGE=trinodb/trino:484`
   (since 2026-11-11). The stack runs with Trino; `thrift` is off (8 GB RAM: do not run
   `thrift` and `trino` together). No RustFS variables. DBeaver on Windows connects to Trino
@@ -299,7 +324,7 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ```text
 Read docs/HANDOFF.md (on main). On the EC2 VM, switch to branch
-feat/hop-native-spark and execute the plan
-docs/superpowers/plans/2026-11-13-hop-native-spark.md (issue #65, tasks #66-#70)
-subagent-driven. Follow "Resume here".
+feat/hop-native-spark (Tasks 1-2 are local commits) and continue the plan
+docs/superpowers/plans/2026-11-13-hop-native-spark.md subagent-driven from
+Task 3 (#68), run in full from Step 1. Follow "Resume here".
 ```
