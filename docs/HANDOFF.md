@@ -1,7 +1,10 @@
 # Handoff — Iceberg catalog lab
 
-- Date: 2026-11-11
-- From: Claude Code session on the EC2 VM: execution of the Trino plan (#54), PR #64 merged,
+- Date: 2026-11-13
+- From: Claude Code session on the workstation (2026-11-13): issue #65 (Apache Hop native
+  Spark), brainstorming, design spec, work plan, task issues #66-#70; branch
+  `feat/hop-native-spark` pushed. Execution moves to the EC2 VM.
+  Earlier (EC2 VM, 2026-11-11): execution of the Trino plan (#54), PR #64 merged,
   new issue #63. Earlier on 2026-11-11: work plan of #54, task issues #56-#62;
   brainstorming and design spec of #54, new issue #55; `SparkSessionCatalog` spike and closure of #50, new issue
   #54. Earlier session (workstation, 2026-11-05): repository rename, issue #52, Power BI
@@ -19,8 +22,9 @@
 | ELT with dbt | Merged (PR #49, merge commit `72b81ca`, 2026-11-03). Branch `feat/dbt-elt` deleted (local and remote); SDD workspace deleted |
 | dbt spec | `docs/superpowers/specs/2026-10-30-dbt-elt-design.md` |
 | dbt plan | `docs/superpowers/plans/2026-10-30-dbt-elt.md` — Tasks 29-36, all done |
-| GitHub issues | #40 … #48, #50, #54 and #56-#62 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #55 open (dbt-trino experiment, now unblocked). #63 open (Trino on the RustFS variant, low priority) |
+| GitHub issues | #40 … #48, #50, #54 and #56-#62 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #55 open (dbt-trino experiment, now unblocked). #63 open (Trino on the RustFS variant, low priority). #65 open (Apache Hop native Spark, high priority) with task issues #66-#70 open |
 | Trino (#54) | Merged (PR #64, merge commit `dd7423f`, 2026-11-11). Branch `feat/trino` deleted (local and remote). Spec `docs/superpowers/specs/2026-11-11-trino-design.md`, plan `docs/superpowers/plans/2026-11-11-trino.md` (Tasks 1-7, all done). Decisions and findings: `NOTES.md` D17, D18, F10 |
+| Apache Hop native Spark (#65) | **In progress.** Branch `feat/hop-native-spark` (pushed, no PR): request `docs/lab-adaptation-for-hop-native-spark.md`, spec `docs/superpowers/specs/2026-11-13-hop-native-spark-design.md`, plan `docs/superpowers/plans/2026-11-13-hop-native-spark.md` (Tasks 1-5 = issues #66-#70, none started). Execution on the EC2 VM |
 | Repository name | `sramazzina/iceberg-platform-lab` since 2026-11-05 (was `iceberg-platform-poc`; GitHub redirects the old name) |
 | CI | The repository has no GitHub Actions workflow |
 
@@ -122,17 +126,47 @@ Changes of 2026-11-11 (EC2 VM):
 - Order changed with the user: DBeaver check and `NOTES.md` (commit `00f8058` on `main`)
   before the push and the PR, so that every checklist was ticked before the PR.
 
+Changes of 2026-11-13 (workstation):
+- The Apache Hop analysis session gave the request
+  `docs/lab-adaptation-for-hop-native-spark.md`: run Hop pipelines with the Hop native Spark
+  engine (`org.apache.hop.spark.run.MainSpark`, `spark-submit`) in container `spark`. Hop stays
+  on the user PC. The user needs a fast trial.
+- Issue #65 (`enhancement`, `priority: high`, `area: spark`). Brainstorming done with the user.
+  Decisions (spec section 3):
+  - minimal scope: Java 21 image, drop zone `./hop` → `/workspace/hop` (service `spark` only),
+    `make hop-run` (script `hop/run.sh`), `hop/env/hop-env.json` (`LAKE_CATALOG`,
+    `HOP_DATA`), tests, README. Out of scope: S3/SSM upload and IAM, driver memory parameter;
+  - the catalog is a parameter of each run (`CATALOG=`), optional when one catalog is
+    configured; names read from the rendered `spark-defaults.conf`. `hop-env.json` is written
+    by `hop/run.sh` for each run, not by the entrypoint;
+  - approach A: Java 21 (`apache/spark:4.1.3-scala2.13-java21-python3-ubuntu`) is the standard
+    image and **replaces** the Java 17 image: remove the Java 17 images **before** the build
+    (disk on the VM). Plan Task 1, Step 5;
+  - trial on the EC2 VM; plan execution and verification by a Claude Code session on the VM.
+- The user stated again: the three catalogs are meant to be **mutually exclusive** (the user
+  picks one). The lab does not enforce it (`spark/entrypoint.sh` renders every catalog in
+  `LAB_CATALOGS`). Enforcement is a separate change, not in #65; no issue opened yet.
+- Spec (`1aa8852`) and plan committed on `feat/hop-native-spark`, branch pushed (no CI in the
+  repository). Task issues #66-#70 created; #65 checklist: brainstorming and spec/plan ticked.
+- Risk to watch in Task 1, Step 6: if the Java 21 base image has another Ubuntu or Python
+  version than 22.04 / 3.10, stop and ask the user (pip pins, issue #52).
+- Task 5 (#70, `needs: user`) needs the Hop-side artifacts: fat jar and sample project package.
+
 ## Resume here
 
 0. On every machine with an old clone (Linux server, workstation if not done), do the rename
    steps in "Rename of the clone" below before any other work.
-1. No work in progress. Pick the next goal with the user:
+1. On the EC2 VM: `git fetch`, then `git switch feat/hop-native-spark`. Execute the plan
+   `docs/superpowers/plans/2026-11-13-hop-native-spark.md` subagent-driven (Tasks 1-4; Task 5
+   when the user has the Hop artifacts). Follow "Order and end of the work" at the end of the
+   plan: one push, PR with `Closes #66` … `Closes #69`; `NOTES.md` D19 and F11 on `main`.
+2. Other goals, after #65:
    - #55: dbt-spark versus dbt-trino experiment (Trino is now in the lab);
    - #63: run `tests/trino-service.sh` on a host with the RustFS variant (the workstation or
      the Linux server);
    - #53: Power BI (needs the user in Power BI Desktop / gateway);
    - #52: Python upgrade of the `spark` image.
-2. Start new work with `superpowers:brainstorming`, then spec, plan, issues, subagent-driven
+3. Start new work with `superpowers:brainstorming`, then spec, plan, issues, subagent-driven
    execution.
 
 ## State of the Linux server
@@ -240,6 +274,8 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ## Open points to watch
 
+- Issue #65 (high priority): Apache Hop native Spark, plan not started (see "Resume here").
+- Catalogs mutually exclusive: user intent, not enforced by the lab (changes of 2026-11-13).
 - Issue #63 (low priority): Trino on the RustFS variant, not verified live.
 - Issue #55 (`enhancement`, `area: elt`): dbt-spark versus dbt-trino experiment. Unblocked
   (#54 merged).
@@ -262,7 +298,8 @@ the absolute path of the directory, so the stack must stop before the rename.
 ## Kick-off prompt for the next session
 
 ```text
-Read docs/HANDOFF.md (on main). Trino (#54) is merged. Follow "Resume here": ask the
-user which goal to start next (#55 dbt-trino, #63 Trino on RustFS, #53 Power BI, #52
-Python upgrade).
+Read docs/HANDOFF.md (on main). On the EC2 VM, switch to branch
+feat/hop-native-spark and execute the plan
+docs/superpowers/plans/2026-11-13-hop-native-spark.md (issue #65, tasks #66-#70)
+subagent-driven. Follow "Resume here".
 ```
