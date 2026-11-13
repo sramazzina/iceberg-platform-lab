@@ -31,6 +31,8 @@ echo "compose variant: AWS stack"
 assert_eq "$(q "$aws" '.services | has("rustfs")')" "false" "no rustfs service"
 assert_eq "$(src "$aws" postgres /var/lib/postgresql)" "pgdata" "postgres data on the volume pgdata"
 assert_eq "$(src "$aws" rest-fixture /home/iceberg)" "rest-fixture-data" "rest catalog on the volume rest-fixture-data"
+assert_eq "$(src "$aws" spark /workspace/hop)" "$ROOT/hop" "spark mounts ./hop on /workspace/hop"
+assert_eq "$(src "$aws" spark-thrift /workspace/hop)" "" "spark-thrift does not mount ./hop"
 assert_eq "$(q "$aws" '.services["spark-thrift"].profiles | join(",")')" "thrift" "spark-thrift is in the profile thrift"
 assert_eq "$(q "$aws" '[.services["spark-thrift"].ports[] | "\(.host_ip):\(.published)->\(.target)"] | join(",")')" \
   "127.0.0.1:10000->10000" "spark-thrift port on 127.0.0.1:10000"

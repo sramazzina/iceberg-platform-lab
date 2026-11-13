@@ -7,3 +7,9 @@ secrets/
 /landing/
 /dbt/target/
 /dbt/logs/
+/hop/dist/*
+!/hop/dist/.gitkeep
+/hop/env/*
+!/hop/env/.gitkeep
+/hop/out/*
+!/hop/out/.gitkeep
