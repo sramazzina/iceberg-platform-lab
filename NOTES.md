@@ -134,6 +134,22 @@ Each entry: what the requirement says, what the lab does, and why.
   `polaris-setup` does not need to know which engines are on.
 - Spec: `docs/superpowers/specs/2026-11-11-trino-design.md`, section 8. Finding: F10.
 
+### D19 — Apache Hop native Spark: Java 21, drop zone, catalog chosen for each run
+- Requirement: issue #65 (request `docs/lab-adaptation-for-hop-native-spark.md`).
+- Lab: the `spark` image uses Java 21 (`apache/spark:4.1.3-scala2.13-java21-python3-ubuntu`);
+  the Java 21 image replaces the Java 17 image. Service `spark` mounts `./hop` on
+  `/workspace/hop`. `make hop-run` (script `hop/run.sh`) writes `hop/env/hop-env.json` with
+  `LAKE_CATALOG` for each run: `CATALOG=`, or the only configured catalog. The catalog names
+  come from the rendered `spark-defaults.conf`. Upload with `scp` only.
+- Why: Hop is compiled for Java 21. The user wants the catalogs to be mutually exclusive, but
+  the lab does not enforce it; a choice for each run works in both cases. S3/SSM upload and a
+  driver memory parameter are deferred.
+- Regression on Java 21 (EC2 VM, 2026-11-17, issue #68): every test passed. `make elt-test`:
+  nessie 7 min 03 s, polaris 10 min 02 s, rest 7 min 55 s (F8, Java 17: 6 min 55 s,
+  9 min 32 s, 7 min 40 s).
+- Spec: `docs/superpowers/specs/2026-11-13-hop-native-spark-design.md`. Finding: F11 (after
+  the end-to-end trial, issue #70).
+
 ## Findings
 
 ### F1 — Nessie S3 credentials (Nessie 0.109.0, checked 2026-10-28)
