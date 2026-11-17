@@ -186,6 +186,12 @@ Update of 2026-11-17 (supersedes step 1 below):
 - Next: Task 5 (#70) when the user gives the fat jar and the project package (plan Task 5);
   then `NOTES.md` F11 on `main`, close #70 and #65. #65 checklist: "Verify on the
   workstation or the Linux server" is still open.
+- Post-merge: PR #71 merged (`53a035c`), branch deleted (local and remote), #66-#69 closed.
+  Quick check by the user passed (Java 21 in `spark`, `make hop-run` messages).
+- #70 scope (user, 2026-11-17): trial with only the profile `nessie`, no `CATALOG=`, no
+  `polaris` run. Issue body updated.
+- One catalog at a time (user rule, `NOTES.md` D20): documented only, not enforced. The EC2
+  VM `.env` has `COMPOSE_PROFILES=nessie,trino` since 2026-11-17.
 - Disk on the EC2 VM: 5.8 GB free. Docker build cache holds about 3.9 GB reclaimable
   (`docker builder prune`); the user decided to keep it for now (2026-11-17).
 
@@ -250,8 +256,9 @@ the absolute path of the directory, so the stack must stop before the rename.
 - Disk: 30 GB (grown by the user on 2026-11-11); 5.9 GB free on 2026-11-13 after the Java 21
   image.
 - `spark` image: Java 21 since 2026-11-13 (`SPARK_BASE_IMAGE` in `.env`); Java 17 images removed.
-- `.env`: `COMPOSE_PROFILES=nessie,polaris,baseline,trino` and `TRINO_IMAGE=trinodb/trino:484`
-  (since 2026-11-11). The stack runs with Trino; `thrift` is off (8 GB RAM: do not run
+- `.env`: `COMPOSE_PROFILES=nessie,trino` (since 2026-11-17; was
+  `nessie,polaris,baseline,trino`) and `TRINO_IMAGE=trinodb/trino:484` (since 2026-11-11).
+  The stack runs with Trino; `thrift` is off (8 GB RAM: do not run
   `thrift` and `trino` together). No RustFS variables. DBeaver on Windows connects to Trino
   through the SSH tunnel with `jdbc:trino://localhost:8080` (any user, no password); the
   Thrift Server URL `jdbc:hive2://127.0.0.1:10000/;auth=noSasl;?spark.sql.defaultCatalog=nessie`
@@ -316,7 +323,8 @@ the absolute path of the directory, so the stack must stop before the rename.
 ## Open points to watch
 
 - Issue #65 (high priority): Apache Hop native Spark, PR #71 open; Task 5 (#70) pending.
-- Catalogs mutually exclusive: user intent, not enforced by the lab (changes of 2026-11-13).
+- One catalog at a time: user rule, documented (`NOTES.md` D20), not enforced (user decision
+  2026-11-17).
 - Issue #63 (low priority): Trino on the RustFS variant, not verified live.
 - Issue #55 (`enhancement`, `area: elt`): dbt-spark versus dbt-trino experiment. Unblocked
   (#54 merged).

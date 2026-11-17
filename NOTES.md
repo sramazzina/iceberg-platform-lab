@@ -150,6 +150,17 @@ Each entry: what the requirement says, what the lab does, and why.
 - Spec: `docs/superpowers/specs/2026-11-13-hop-native-spark-design.md`. Finding: F11 (after
   the end-to-end trial, issue #70).
 
+### D20 — One catalog at a time
+- Requirement: user decision (2026-11-13, stated again on 2026-11-17).
+- Lab: in normal use exactly one catalog profile is on (`nessie`, `polaris` or `baseline`);
+  the user picks it when needed. The EC2 VM runs `COMPOSE_PROFILES=nessie,trino` since
+  2026-11-17.
+- Why: the user uses one catalog at a time. The rule is documented only (`README.md`,
+  "Choose the catalogs"): the lab does not enforce it, because the regression tests
+  (`make smoke-test`, `tests/catalog-selection.sh`, `tests/trino-service.sh`) run several
+  catalogs together. User decision (2026-11-17): no enforcement.
+- Related: D11, D19.
+
 ## Findings
 
 ### F1 — Nessie S3 credentials (Nessie 0.109.0, checked 2026-10-28)

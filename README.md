@@ -98,15 +98,21 @@ Do these steps once. Steps 1-2 run in CloudShell, the other steps on the VM.
 
 ## Choose the catalogs
 
-1. Set `COMPOSE_PROFILES` in `.env`: `polaris`, `nessie`, `baseline` (Spark catalog `rest`),
-   or a list (`nessie,polaris`, no spaces). Leave it empty for no catalog.
-   Add `thrift` for the Spark Thrift Server, `trino` for Trino (see [Trino](#trino)).
+Use one catalog at a time. Pick the catalog that you need; to change it, edit
+`COMPOSE_PROFILES` and run `make up` again.
+
+1. Set `COMPOSE_PROFILES` in `.env` to one catalog: `nessie`, `polaris` or `baseline` (Spark
+   catalog `rest`). Add `thrift` for the Spark Thrift Server, `trino` for Trino (see
+   [Trino](#trino)), for example `nessie,trino` (no spaces). Leave it empty for no catalog.
 2. Run `make up`. It starts the catalogs in `COMPOSE_PROFILES` and stops the others.
    The data of a stopped catalog stays (Postgres database and S3 prefix).
 3. Run `make smoke-test`. It tests the base stack and each catalog that is on.
 
-The catalogs do not have to run together. To compare them, run the same test or notebook once
-with each catalog.
+To compare the catalogs, run the same test or notebook once with each catalog.
+
+The lab does not block a list of catalogs (`nessie,polaris`): Spark then configures each of
+them. Only the regression tests use this (`make smoke-test`, `tests/catalog-selection.sh`,
+`tests/trino-service.sh`). With several catalogs on, `make hop-run` needs `CATALOG=`.
 
 ## Daily use
 
