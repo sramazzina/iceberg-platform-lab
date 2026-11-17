@@ -8,7 +8,7 @@ The tag `latest` is never used.
 
 | Component | Version | Pinned in | Source |
 |---|---|---|---|
-| Apache Spark | 4.1.3 (Scala 2.13, Java 17) | `SPARK_BASE_IMAGE=apache/spark:4.1.3-scala2.13-java17-python3-ubuntu` | <https://hub.docker.com/r/apache/spark/tags>, <https://github.com/apache/spark-docker/tree/master/4.1.3/scala2.13-java17-python3-ubuntu> |
+| Apache Spark | 4.1.3 (Scala 2.13, Java 21) | `SPARK_BASE_IMAGE=apache/spark:4.1.3-scala2.13-java21-python3-ubuntu` | <https://hub.docker.com/r/apache/spark/tags>, <https://github.com/apache/spark-docker/tree/master/4.1.3/scala2.13-java21-python3-ubuntu> |
 | Apache Iceberg Spark runtime | 1.11.0 | `ICEBERG_SPARK_RUNTIME_ARTIFACT=iceberg-spark-runtime-4.1_2.13`, `ICEBERG_VERSION`, `ICEBERG_SPARK_RUNTIME_SHA1` | <https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-4.1_2.13/1.11.0/> |
 | Apache Iceberg AWS bundle | 1.11.0 | `ICEBERG_VERSION`, `ICEBERG_AWS_BUNDLE_SHA1` | <https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.11.0/> |
 | Apache Polaris | 1.8.0 | `POLARIS_IMAGE=apache/polaris:1.8.0` | <https://github.com/apache/polaris/releases/tag/apache-polaris-1.8.0> |
@@ -22,7 +22,7 @@ The tag `latest` is never used.
 | PostgreSQL | 18.6 | `POSTGRES_IMAGE=postgres:18.6` | <https://hub.docker.com/_/postgres> |
 | curl + jq job image | alpine/curl 8.22.0 (jq added with `apk`) | `POLARIS_SETUP_IMAGE=alpine/curl:8.22.0` | <https://hub.docker.com/r/alpine/curl/tags> |
 | AWS CLI v2 | 2.39.0 | `AWSCLI_VERSION` | <https://raw.githubusercontent.com/aws/aws-cli/v2/CHANGELOG.rst> |
-| Python (Spark image) | 3.10 (Ubuntu 22.04 package) | base image | <https://github.com/apache/spark-docker/tree/master/4.1.3/scala2.13-java17-python3-ubuntu> |
+| Python (Spark image) | 3.10 (Ubuntu 22.04 package) | base image | <https://github.com/apache/spark-docker/tree/master/4.1.3/scala2.13-java21-python3-ubuntu> |
 | JupyterLab | 4.6.4 | `spark/requirements.txt` | <https://pypi.org/project/jupyterlab/4.6.4/> |
 | PyIceberg | 0.12.0 | `spark/requirements.txt` | <https://pypi.org/project/pyiceberg/0.12.0/> |
 | pandas | 2.3.3 (last release for Python 3.10) | `spark/requirements.txt` | <https://pypi.org/project/pandas/2.3.3/> |

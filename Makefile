@@ -1,4 +1,4 @@
-.PHONY: lint test-aws up down reset logs sql-nessie sql-polaris sql-rest sql-trino nessie-cli smoke-test tpch-gen tpch-load tpch-clean elt-require dbt elt-test
+.PHONY: lint test-aws up down reset logs sql-nessie sql-polaris sql-rest sql-trino nessie-cli smoke-test tpch-gen tpch-load tpch-clean elt-require dbt elt-test hop-run
 
 lint:
 	tests/lint.sh
@@ -74,3 +74,8 @@ dbt:
 
 elt-test:
 	tests/elt.sh "$(CATALOG)"
+
+# Apache Hop native Spark (spec 2026-11-13-hop-native-spark-design). The Hop artifacts are
+# in hop/dist/. CATALOG is optional when only one catalog is configured.
+hop-run:
+	PIPELINE="$(PIPELINE)" PACKAGE="$(PACKAGE)" CATALOG="$(CATALOG)" JAR="$(JAR)" RUN_CONFIG="$(RUN_CONFIG)" hop/run.sh

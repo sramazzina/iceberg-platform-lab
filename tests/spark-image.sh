@@ -10,6 +10,8 @@ set -a; source .env; set +a
 run() { docker compose run --rm --no-deps -T spark "$@" 2>&1 || echo "command failed (exit $?)"; }
 
 echo "spark image"
+# Apache Hop native Spark needs Java 21 (spec 2026-11-13-hop-native-spark-design, 4.1).
+assert_contains "$(run bash -c 'java -version 2>&1 | head -n1')" 'version "21' "Java 21"
 jars=$(run bash -c 'ls "$SPARK_HOME/jars"')
 assert_contains "$jars" "$ICEBERG_SPARK_RUNTIME_ARTIFACT-$ICEBERG_VERSION.jar" "Iceberg Spark runtime"
 assert_contains "$jars" "iceberg-aws-bundle-$ICEBERG_VERSION.jar" "Iceberg AWS bundle"
