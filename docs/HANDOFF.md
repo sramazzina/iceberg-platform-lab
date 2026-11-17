@@ -1,7 +1,9 @@
 # Handoff — Iceberg catalog lab
 
-- Date: 2026-11-13
-- From: Claude Code session on the EC2 VM (2026-11-13, evening): plan of #65, Tasks 1 and 2
+- Date: 2026-11-17
+- From: Claude Code session on the EC2 VM (2026-11-17): Tasks 3 and 4 of #65 done, PR #71
+  opened (Closes #66-#69), D19 on `main`; Task 5 (#70) waits for the Hop artifacts.
+  Earlier: Claude Code session on the EC2 VM (2026-11-13, evening): plan of #65, Tasks 1 and 2
   done (local commits, not pushed); Task 3 stopped by the user, to run again in full.
   Earlier: Claude Code session on the workstation (2026-11-13): issue #65 (Apache Hop native
   Spark), brainstorming, design spec, work plan, task issues #66-#70; branch
@@ -26,7 +28,7 @@
 | dbt plan | `docs/superpowers/plans/2026-10-30-dbt-elt.md` — Tasks 29-36, all done |
 | GitHub issues | #40 … #48, #50, #54 and #56-#62 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #55 open (dbt-trino experiment, now unblocked). #63 open (Trino on the RustFS variant, low priority). #65 open (Apache Hop native Spark, high priority) with task issues #66-#70 open |
 | Trino (#54) | Merged (PR #64, merge commit `dd7423f`, 2026-11-11). Branch `feat/trino` deleted (local and remote). Spec `docs/superpowers/specs/2026-11-11-trino-design.md`, plan `docs/superpowers/plans/2026-11-11-trino.md` (Tasks 1-7, all done). Decisions and findings: `NOTES.md` D17, D18, F10 |
-| Apache Hop native Spark (#65) | **In progress.** Branch `feat/hop-native-spark` (pushed, no PR): request `docs/lab-adaptation-for-hop-native-spark.md`, spec `docs/superpowers/specs/2026-11-13-hop-native-spark-design.md`, plan `docs/superpowers/plans/2026-11-13-hop-native-spark.md` (Tasks 1-5 = issues #66-#70). Tasks 1 (#66) and 2 (#67) done, reviewed, checklists ticked; commits `5c1b453` and `d507179` are **local on the EC2 VM, not pushed**. Task 3 (#68) stopped, not done. Execution on the EC2 VM |
+| Apache Hop native Spark (#65) | **PR #71 open, waits for the user merge** (Closes #66-#69). Task 5 (#70, end-to-end trial) waits for the Hop artifacts. Earlier state: branch `feat/hop-native-spark` (pushed, no PR): request `docs/lab-adaptation-for-hop-native-spark.md`, spec `docs/superpowers/specs/2026-11-13-hop-native-spark-design.md`, plan `docs/superpowers/plans/2026-11-13-hop-native-spark.md` (Tasks 1-5 = issues #66-#70). Tasks 1 (#66) and 2 (#67) done, reviewed, checklists ticked; commits `5c1b453` and `d507179` are **local on the EC2 VM, not pushed**. Task 3 (#68) stopped, not done. Execution on the EC2 VM |
 | Repository name | `sramazzina/iceberg-platform-lab` since 2026-11-05 (was `iceberg-platform-poc`; GitHub redirects the old name) |
 | CI | The repository has no GitHub Actions workflow |
 
@@ -175,6 +177,19 @@ Changes of 2026-11-13 (EC2 VM, evening), plan of #65 executed subagent-driven:
 
 ## Resume here
 
+Update of 2026-11-17 (supersedes step 1 below):
+- Task 3 (#68): full regression on Java 21 passed on the EC2 VM (results in #68 and in
+  `NOTES.md` D19). The stack was down at the start (containers Exited for 3 days): run
+  `make up` before tests. Task 4 (#69): README commit `cf83dee`. D19 on `main` (`07106cb`).
+- PR #71 opened (Closes #66-#69). The user merges. After the merge: delete the branch
+  `feat/hop-native-spark` (local and remote), `git switch main`, `git pull`.
+- Next: Task 5 (#70) when the user gives the fat jar and the project package (plan Task 5);
+  then `NOTES.md` F11 on `main`, close #70 and #65. #65 checklist: "Verify on the
+  workstation or the Linux server" is still open.
+- Disk on the EC2 VM: 5.8 GB free. Docker build cache holds about 3.9 GB reclaimable
+  (`docker builder prune`); the user decided to keep it for now (2026-11-17).
+
+
 0. On every machine with an old clone (Linux server, workstation if not done), do the rename
    steps in "Rename of the clone" below before any other work.
 1. On the EC2 VM: `git switch feat/hop-native-spark` (Tasks 1-2 are local commits there, do
@@ -255,7 +270,8 @@ the absolute path of the directory, so the stack must stop before the rename.
    bucket name, external ID, password or secret in any tracked file.
 2. AWS: the user runs `aws/setup.sh` and `aws/teardown.sh` in CloudShell. Claude never
    creates or changes AWS resources.
-3. Spark image `apache/spark:4.1.3-scala2.13-java17-python3-ubuntu`, Python 3.10; Iceberg
+3. Spark image `apache/spark:4.1.3-scala2.13-java21-python3-ubuntu` (Java 21 since #65,
+   2026-11-13; was Java 17), Python 3.10; Iceberg
    1.11.0; versions in `VERSIONS.md`.
 4. The catalogs are off by default; `COMPOSE_PROFILES` in `.env` selects them (`NOTES.md` D11).
 5. Phases 5 and 6 are deferred (`NOTES.md` D14).
@@ -299,7 +315,7 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ## Open points to watch
 
-- Issue #65 (high priority): Apache Hop native Spark, plan not started (see "Resume here").
+- Issue #65 (high priority): Apache Hop native Spark, PR #71 open; Task 5 (#70) pending.
 - Catalogs mutually exclusive: user intent, not enforced by the lab (changes of 2026-11-13).
 - Issue #63 (low priority): Trino on the RustFS variant, not verified live.
 - Issue #55 (`enhancement`, `area: elt`): dbt-spark versus dbt-trino experiment. Unblocked
