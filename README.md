@@ -173,6 +173,7 @@ with each catalog.
 | `make dbt CATALOG=<c> ARGS="<dbt arguments>"` | Runs dbt on the catalog `<c>` (needs the profile `thrift`) |
 | `make tpch-clean CATALOG=<c>` | Drops `tpch_raw`, `tpch_staging`, `tpch_marts` of `<c>`, files included |
 | `make elt-test CATALOG=<c>` | Runs the end-to-end ELT test on `<c>` (small scale) |
+| `make hop-run PIPELINE=<p> PACKAGE=<zip> [CATALOG=<c>] [JAR=<jar>] [RUN_CONFIG=<r>]` | Runs an Apache Hop pipeline with the Hop native Spark engine in `spark` (see [Running Apache Hop pipelines](#running-apache-hop-pipelines)) |
 
 ## Access from your machine
 
@@ -456,6 +457,61 @@ Symptoms when the memory is not sufficient:
 - Trino stops a query with an error `Query exceeded per-node memory limit`. The query limit
   is 30% of `TRINO_HEAP`.
 
+## Running Apache Hop pipelines
+
+Apache Hop runs on your PC. The lab runs a Hop pipeline with the Hop native Spark engine in
+the container `spark` (`local[*]`). The Spark session reads the lab configuration: Iceberg
+extensions, the catalogs that are on and the S3 settings.
+
+The `spark` image uses Java 21: Hop needs it.
+
+### Prepare the Hop artifacts (on your PC)
+
+The Hop side gives two files:
+
+- the fat jar, built with `hop-conf.sh --generate-fat-jar=... --spark-client-version=native-provided`
+  (default name `hop-native-spark4-submit.jar`);
+- the project package (`.zip`), built with `hop-conf.sh --export-spark-project=...`.
+
+In the pipelines, use `${LAKE_CATALOG}.<namespace>.<table>` for Iceberg tables. Leave the
+field "catalog metadata" of the Lake Table transforms empty. Leave the Spark master of the
+run configuration empty.
+
+### Copy the artifacts to the lab
+
+On a remote VM, copy the files to `hop/dist/` with `scp` (same key and host as the
+[SSH tunnel](#ssh-tunnel)):
+
+```bash
+scp hop-native-spark4-submit.jar project.zip <user>@<vm>:<lab directory>/hop/dist/
+```
+
+On a local host, copy the files to `hop/dist/`.
+
+### Run a pipeline
+
+1. Run `make up`. On the VM with 8 GB, keep `trino` and `thrift` off during a Hop run (see
+   [Memory per service](#memory-per-service)).
+2. Run `make hop-run PIPELINE=pipelines/my-pipeline.hpl PACKAGE=project.zip`.
+   - With one catalog on, the run uses it.
+   - With several catalogs on, add `CATALOG=nessie`, `CATALOG=polaris` or `CATALOG=rest`.
+3. Read the result with `make sql-nessie`, `make sql-polaris` or `make sql-rest`.
+
+`make hop-run` writes `hop/env/hop-env.json` with the Hop variables `LAKE_CATALOG` (the
+catalog of the run) and `HOP_DATA` (`file:///workspace/hop/out`). The file has no secret.
+The exit code is the exit code of the pipeline.
+
+### Move an existing host to the Java 21 image
+
+The Java 21 image replaces the Java 17 image. Run each command separately:
+
+1. `docker compose rm -sf spark spark-thrift`
+2. `docker image rm iceberg-lab-spark:1.11.0`
+3. `docker image rm apache/spark:4.1.3-scala2.13-java17-python3-ubuntu`
+4. In `.env`, set
+   `SPARK_BASE_IMAGE=apache/spark:4.1.3-scala2.13-java21-python3-ubuntu`.
+5. `make up`
+
 ## On-premise with RustFS
 
 The lab can run on a PC or on an on-premise server without AWS. RustFS replaces AWS S3: it
@@ -530,6 +586,8 @@ data directory, then run `make up`.
 | [Plan: RustFS variant](docs/superpowers/plans/2026-10-29-rustfs-onprem.md) | Task-by-task implementation plan |
 | [Design spec: Trino](docs/superpowers/specs/2026-11-11-trino-design.md) | Optional Trino service on the Iceberg catalogs |
 | [Plan: Trino](docs/superpowers/plans/2026-11-11-trino.md) | Task-by-task implementation plan |
+| [Design spec: Apache Hop native Spark](docs/superpowers/specs/2026-11-13-hop-native-spark-design.md) | Run Hop pipelines with the native Spark engine on the lab |
+| [Plan: Apache Hop native Spark](docs/superpowers/plans/2026-11-13-hop-native-spark.md) | Task-by-task implementation plan |
 | [Handoff](docs/HANDOFF.md) | Current state and decisions (for the next work session) |
 
 ## License
