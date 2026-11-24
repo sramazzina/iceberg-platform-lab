@@ -533,6 +533,9 @@ The directory is mounted read-only at `/opt/lab-extra` in `spark` and `spark-thr
 `make up` creates `jars/` and `conf/`. Run `make up` before a direct `docker compose up`.
 Otherwise Docker creates the directory with the owner root.
 
+After an update of the lab, run `make up` once. It rebuilds the `spark` image. The entrypoint is
+in the image.
+
 ### Permissions
 
 The container user is `spark`. It has the UID of the host user (build argument `LAB_UID`, see
@@ -541,10 +544,10 @@ The container user is `spark`. It has the UID of the host user (build argument `
 - Set mode 755 on `local/spark`, `jars/` and `conf/`.
 - Set mode 644 on the files.
 
-Mode 700 on `local/` is fine: Docker resolves the bind mount as root.
+Mode 700 on `local/` is fine. The container mounts only `local/spark`. It does not read `local/` itself.
 
 A `.conf` file that the container cannot read stops the start of the service. A jar that the
-container cannot read is skipped without a message. Spark then shows `No suitable driver`.
+container cannot read may be skipped without a message. Spark then shows `No suitable driver`.
 
 ### Example: SQL Server
 
@@ -552,12 +555,12 @@ container cannot read is skipped without a message. Spark then shows `No suitabl
    `local/spark/jars/`.
 2. Create `local/spark/conf/mssql.conf` with this content:
 
-```
-spark.sql.catalog.mssql           org.apache.spark.sql.execution.datasources.v2.jdbc.JDBCTableCatalog
-spark.sql.catalog.mssql.url       jdbc:sqlserver://host.docker.internal:1433;databaseName=<db>;encrypt=true;trustServerCertificate=true
-spark.sql.catalog.mssql.user      <read-only login>
-spark.sql.catalog.mssql.password  <password>
-```
+   ```properties
+   spark.sql.catalog.mssql           org.apache.spark.sql.execution.datasources.v2.jdbc.JDBCTableCatalog
+   spark.sql.catalog.mssql.url       jdbc:sqlserver://host.docker.internal:1433;databaseName=<db>;encrypt=true;trustServerCertificate=true
+   spark.sql.catalog.mssql.user      <read-only login>
+   spark.sql.catalog.mssql.password  <password>
+   ```
 
 3. `docker compose restart spark spark-thrift`
 
