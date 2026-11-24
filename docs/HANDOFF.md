@@ -1,9 +1,10 @@
 # Handoff — Iceberg catalog lab
 
 - Date: 2026-11-24
-- From: Claude Code session on the EC2 VM (2026-11-24): brainstorming, spec and plan of the
-  extra JDBC sources and the SQL Server shipping source for dbt study (branch
-  `feat/extra-jdbc-sources`, local only, not pushed; no issue yet).
+- From: Claude Code session on the EC2 VM (2026-11-24, evening): plan of the extra JDBC
+  sources executed (Tasks 0-8), issue #72, PR #73 open, D21 and F12 on `main`.
+  Earlier on 2026-11-24: brainstorming, spec and plan of the extra JDBC sources and the SQL
+  Server shipping source for dbt study.
   Earlier: Claude Code session on the EC2 VM (2026-11-17): Tasks 3 and 4 of #65 done, PR #71
   opened (Closes #66-#69), D19 on `main`; Task 5 (#70) waits for the Hop artifacts.
   Earlier: Claude Code session on the EC2 VM (2026-11-13, evening): plan of #65, Tasks 1 and 2
@@ -32,7 +33,7 @@
 | GitHub issues | #40 … #48, #50, #54 and #56-#62 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #55 open (dbt-trino experiment, now unblocked). #63 open (Trino on the RustFS variant, low priority). #65 open (Apache Hop native Spark, high priority) with task issues #66-#70 open |
 | Trino (#54) | Merged (PR #64, merge commit `dd7423f`, 2026-11-11). Branch `feat/trino` deleted (local and remote). Spec `docs/superpowers/specs/2026-11-11-trino-design.md`, plan `docs/superpowers/plans/2026-11-11-trino.md` (Tasks 1-7, all done). Decisions and findings: `NOTES.md` D17, D18, F10 |
 | Apache Hop native Spark (#65) | **PR #71 open, waits for the user merge** (Closes #66-#69). Task 5 (#70, end-to-end trial) waits for the Hop artifacts. Earlier state: branch `feat/hop-native-spark` (pushed, no PR): request `docs/lab-adaptation-for-hop-native-spark.md`, spec `docs/superpowers/specs/2026-11-13-hop-native-spark-design.md`, plan `docs/superpowers/plans/2026-11-13-hop-native-spark.md` (Tasks 1-5 = issues #66-#70). Tasks 1 (#66) and 2 (#67) done, reviewed, checklists ticked; commits `5c1b453` and `d507179` are **local on the EC2 VM, not pushed**. Task 3 (#68) stopped, not done. Execution on the EC2 VM |
-| Extra JDBC sources + SQL Server shipping source (no issue yet) | **Spec and plan written, execution not started.** Branch `feat/extra-jdbc-sources` (**local on the EC2 VM, not pushed**): commits `80674ae` (spec `docs/superpowers/specs/2026-11-24-extra-jdbc-sources-design.md`) and `b51c2c7` (plan `docs/superpowers/plans/2026-11-24-extra-jdbc-sources.md`, Tasks 0-8). Part L (lab, PR) + Part S (local files in the dbt project `~/work/academy/dbt-iceberg-lab`, never committed) |
+| Extra JDBC sources + SQL Server shipping source (#72) | **PR #73 open, waits for the user merge** (Closes #72; checklist ticked). Plan Tasks 0-8 done. Spec `docs/superpowers/specs/2026-11-24-extra-jdbc-sources-design.md`, plan `docs/superpowers/plans/2026-11-24-extra-jdbc-sources.md` (with "Execution record"). Decisions and findings: `NOTES.md` D21, F12. Part S (local, never committed): `~/work/academy/dbt-iceberg-lab/sqlserver-source/` (SQL Server, `run.sh`, `MANUAL.html`), `models/shipping/`, lab `local/spark/` (driver jar, `conf/mssql.conf`) |
 | Repository name | `sramazzina/iceberg-platform-lab` since 2026-11-05 (was `iceberg-platform-poc`; GitHub redirects the old name) |
 | CI | The repository has no GitHub Actions workflow |
 
@@ -181,6 +182,24 @@ Changes of 2026-11-13 (EC2 VM, evening), plan of #65 executed subagent-driven:
 
 ## Resume here
 
+Update of 2026-11-24, evening (supersedes the "Next" line of the update below):
+- Plan of the extra JDBC sources executed subagent-driven; every task reviewed. Issue #72
+  (evidence in its comments), PR #73 (Closes #72). The user merges. After the merge: delete
+  the branch `feat/extra-jdbc-sources` (local and remote), `git switch main`, `git pull`.
+- Results: driver `mssql-jdbc` 13.6.2.jre11; SQL Server `2022-CU28-ubuntu-22.04`; dbt source
+  form `schema: mssql.dbo` with quoting off (`database:` fails in dbt-spark, F12); regression
+  on nessie passed; all solutions of `MANUAL.html` run once and pass.
+- dbt venv in `~/work/academy/dbt-iceberg-lab/.venv` uses Python 3.13.5 (no 3.11 on the VM);
+  dbt-core 1.12.6 and dbt-spark 1.11.0 work.
+- EC2 VM state: `.env` has `COMPOSE_PROFILES=nessie,thrift` since 2026-11-24 (user approval;
+  Trino stopped). SQL Server container `shipping-source-sqlserver-1` runs (about 620 MiB) on
+  `172.17.0.1:1433`, at simulated day 0. Disk: about 3 GB free.
+- Left in Nessie: `nessie.shipping_smoke.shipping_smoke` (smoke model). The solution check
+  dropped `shipping_staging`, `shipping_marts` and `shipping_snapshots` without `PURGE` (Nessie
+  refuses it: GC is disabled), so their data files may stay in the bucket.
+- Not changed (out of scope, reported to the user): the dbt project files still name the lab
+  `../iceberg-platform-poc`. `.serena/` is still untracked in the lab.
+
 Update of 2026-11-24 (supersedes the older steps below for new work):
 - Goal: the user studies dbt with the dbt project `~/work/academy/dbt-iceberg-lab` (remote
   `sramazzina/dbt-project-iceberg-lab`; dbt-spark thrift, catalog nessie). Source for the
@@ -282,7 +301,7 @@ the absolute path of the directory, so the stack must stop before the rename.
 - Disk: 30 GB (grown by the user on 2026-11-11); 5.9 GB free on 2026-11-13 after the Java 21
   image.
 - `spark` image: Java 21 since 2026-11-13 (`SPARK_BASE_IMAGE` in `.env`); Java 17 images removed.
-- `.env`: `COMPOSE_PROFILES=nessie,trino` (since 2026-11-17; was
+- `.env`: `COMPOSE_PROFILES=nessie,thrift` (since 2026-11-24; `nessie,trino` from 2026-11-17; was
   `nessie,polaris,baseline,trino`) and `TRINO_IMAGE=trinodb/trino:484` (since 2026-11-11).
   The stack runs with Trino; `thrift` is off (8 GB RAM: do not run
   `thrift` and `trino` together). No RustFS variables. DBeaver on Windows connects to Trino
