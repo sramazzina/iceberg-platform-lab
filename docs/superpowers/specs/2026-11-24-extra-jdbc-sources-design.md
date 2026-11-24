@@ -1,7 +1,7 @@
 # Design — Extra JDBC sources for the lab Spark, and a SQL Server shipping source for dbt study
 
 - Date: 2026-11-24
-- Issue: to be opened (this spec)
+- Issue: #72
 - Status: approved by the user in the brainstorming of 2026-11-24
 
 ## 1. Goal
