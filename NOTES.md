@@ -444,6 +444,45 @@ Deviations from the spec (plan `docs/superpowers/plans/2026-11-11-trino.md`):
 Not verified with a live run: Trino on the RustFS variant (not configured on the EC2 VM).
 Only the Compose configuration is checked (`tests/compose-variant.sh`). Follow-up: issue #63.
 
+### F12 — dbt-spark sources on a Spark JDBC catalog (checked 2026-11-24, #72)
+
+Variant b works. The source puts the catalog in the schema and turns off the quoting:
+
+```yaml
+version: 2
+sources:
+  - name: shipping
+    schema: mssql.dbo
+    quoting: {database: false, schema: false, identifier: false}
+    tables: [{name: customers}]
+```
+
+`dbt compile` gives `select count(*) from mssql.dbo.customers`. `dbt show` returns `0` on the
+empty table. `dbt parse` and `dbt ls -s source:shipping` work and the other models are not
+affected. Variant a (`database: mssql`, `schema: dbo`) fails: dbt-spark stops with
+`Runtime Error: Cannot set database in spark!`. Variant c (macro that overrides `source()`) was
+not needed.
+
+Type mapping SQL Server to Spark (`DESCRIBE` on `mssql.dbo.*`):
+
+| SQL Server | Spark |
+| --- | --- |
+| `INT` | `int` |
+| `NVARCHAR(n)` | `string` |
+| `DATETIME2(0)` | `timestamp` |
+| `DATE` | `date` |
+| `DECIMAL(8,2)` | `decimal(8,2)` |
+| `TINYINT` | `smallint` |
+
+`SHOW NAMESPACES IN mssql` lists the schemas of the database, not only `dbo`: `db_*` roles,
+`guest`, `INFORMATION_SCHEMA` and `sys`.
+
+`spark-thrift` starts when the JDBC source is down. Only the queries on the catalog fail:
+`SQLServerException: The TCP/IP connection to the host host.docker.internal, port 1433 has
+failed. Error: "Connection refused. ...`. `SELECT 42` still works. Driver `mssql-jdbc`
+13.6.2.jre11, SQL Server 2022-CU28-ubuntu-22.04. dbt ran on Python 3.13.5 (system Python,
+`uv venv`): `dbt-core` 1.12.6 and `dbt-spark` 1.11.0 work with it.
+
 ## Open investigations
 
 Filled in during the later phases.
