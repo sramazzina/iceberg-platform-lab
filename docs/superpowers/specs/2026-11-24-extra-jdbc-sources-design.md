@@ -149,7 +149,7 @@ erDiagram
 | `customers` | sender customers: name, email, country code, `updated_at` | 15 |
 | `shipments` | customer, origin and destination city, service, status, promised date, `created_at`, `updated_at` | 30 |
 | `parcels` | shipment, weight, dimensions | 50 |
-| `tracking_events` | shipment, event type (picked up, in transit, at depot, out for delivery, delivered, exception), event time, location, `loaded_at` | 150 |
+| `tracking_events` | shipment, event type (picked up, in transit, at depot, out for delivery, delivered), event time, location, `loaded_at` | 91 |
 
 T-SQL types: `INT IDENTITY`, `NVARCHAR`, `DATETIME2`, `DECIMAL`. Exact columns are fixed in the
 plan and documented in the manual.
@@ -175,8 +175,7 @@ A control table `sim_clock` holds the current simulated day.
 | `sql/02_seed.sql` | initial data with the defects | once |
 | `sql/03_reader.sql` | login `dbt_reader` | once |
 | `sql/advance_time.sql` | advance the simulated day by one | many times |
-| `sql/reset.sql` | back to the initial state | on demand |
-| `run.sh up\|init\|advance\|reset\|status` | wrapper around `docker compose` and `sqlcmd` | — |
+| `run.sh up\|init\|advance\|reset\|status\|down` | wrapper around `docker compose` and `sqlcmd`; `reset` runs the three init scripts again | — |
 
 `advance_time.sql` is deterministic: it selects rows from the day number, never from random
 values. Each run:
