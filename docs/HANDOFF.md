@@ -193,7 +193,9 @@ Update of 2026-11-24, evening (supersedes the "Next" line of the update below):
   dbt-core 1.12.6 and dbt-spark 1.11.0 work.
 - EC2 VM state: `.env` has `COMPOSE_PROFILES=nessie,thrift` since 2026-11-24 (user approval;
   Trino stopped). SQL Server container `shipping-source-sqlserver-1` runs (about 620 MiB) on
-  `172.17.0.1:1433`, at simulated day 0. Disk: about 3 GB free.
+  `172.17.0.1:1433`, at simulated day 0. Disk: about 3 GB free. End of session: the user
+  stopped everything (`make down` in the lab, `./run.sh down` in `sqlserver-source`; volumes
+  kept). Next session: `make up`, then `./run.sh up`.
 - Left in Nessie: `nessie.shipping_smoke.shipping_smoke` (smoke model). The solution check
   dropped `shipping_staging`, `shipping_marts` and `shipping_snapshots` without `PURGE` (Nessie
   refuses it: GC is disabled), so their data files may stay in the bucket.
