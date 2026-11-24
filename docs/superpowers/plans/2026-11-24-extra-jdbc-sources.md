@@ -1024,3 +1024,23 @@ No "Generated with" line. The user merges.
   updated). Seed has 91 events, not about 150 (spec updated).
 - Values fixed at execution, by a command in the plan: image tag (Task 3 Step 3), driver
   version (Task 4 Step 1), variant a/b/c (Task 4 Step 6), type mapping (Task 4 Step 3).
+
+## Execution record (2026-11-24)
+
+Differences between this plan and the execution on the EC2 VM (issue #72):
+
+- Task 1 Step 1: the container uid is 1000. The `spark` image takes the host UID through the
+  build argument `LAB_UID`, so "a uid that is not 1000" was wrong. The README documents
+  `LAB_UID`, not a fixed uid.
+- Task 1: `tests/extra-dir.sh` points `LAB_EXTRA_DIR` at temporary directories for every
+  `docker compose run`, so it never creates `local/spark` as root. The spark-sql check matches the
+  property name and value together.
+- Task 2: D21 follows the bullet format of D20 in `NOTES.md`. The README section also documents
+  the rebuild with `make up` and the `spark.driver.extraClassPath` override.
+- Task 3: image `mcr.microsoft.com/mssql/server:2022-CU28-ubuntu-22.04`.
+- Task 4: driver `mssql-jdbc` 13.6.2.jre11. Variant b passed; variant a fails with
+  `Cannot set database in spark!`; variant c was not tried. The dbt venv uses Python 3.13.5 (no
+  Python 3.11 on the VM). Results in `NOTES.md` F12.
+- Task 5: every row count matched the table. `advance_time.sql` skips customer 7 in the email
+  change, so the NULL email defect stays after day 7 (found in review).
+- Task 7: the solutions of the manual were run once against the source.

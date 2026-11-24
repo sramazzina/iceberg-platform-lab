@@ -570,7 +570,7 @@ Run the same restart after each change in `jars/` or `conf/`.
 on the Docker bridge address (`172.17.0.1`), not on `127.0.0.1`.
 
 A catalog from `conf/` is a read-only source. It is not an Iceberg catalog. The rule "Use one
-catalog at a time" does not count it (NOTES D20).
+catalog at a time" does not count it (NOTES D21; the rule itself is D20).
 
 Do not set `spark.driver.extraClassPath` in a `conf/` file. The last value wins and it
 replaces `jars/*`.
