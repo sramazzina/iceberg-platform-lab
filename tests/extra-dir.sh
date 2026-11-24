@@ -41,10 +41,11 @@ assert_not_contains "$none" "command failed" "an empty extra directory is accept
 assert_not_contains "$none" "spark.lab.extra" "an empty extra directory adds nothing"
 
 val=$(LAB_EXTRA_DIR="$tmp" docker compose run --rm --no-deps -T -e LAB_CATALOGS= spark \
-  spark-sql -e 'SET spark.lab.extra.probe' 2>/dev/null | tail -1 || echo "spark-sql failed")
-assert_contains "$val" "ok" "spark-sql sees the appended property"
+  spark-sql -e 'SET spark.lab.extra.probe' 2>/dev/null || echo "spark-sql failed")
+match=$(grep -E '^spark\.lab\.extra\.probe[[:space:]]+ok$' <<<"$val" || echo "no match")
+assert_contains "$match" "spark.lab.extra.probe" "spark-sql sees the appended property with its value"
 
-hosts=$(docker compose run --rm --no-deps -T spark getent hosts host.docker.internal 2>/dev/null || echo "none")
+hosts=$(LAB_EXTRA_DIR="$empty" docker compose run --rm --no-deps -T spark getent hosts host.docker.internal 2>/dev/null || echo "none")
 assert_contains "$hosts" "host.docker.internal" "host.docker.internal resolves in the container"
 
 finish

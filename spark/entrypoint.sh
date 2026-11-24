@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Renders the Spark configuration for the catalogs that are on (LAB_CATALOGS, a copy of
 # COMPOSE_PROFILES) and appends the extra configuration files of LAB_EXTRA_DIR, then starts
-# JupyterLab. When arguments are given, runs them instead
-# (for example spark-sql).
+# JupyterLab. When arguments are given, runs them instead (for example spark-sql).
 set -euo pipefail
 source /usr/local/lib/lab/render.sh
 
