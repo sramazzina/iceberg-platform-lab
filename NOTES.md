@@ -161,6 +161,14 @@ Each entry: what the requirement says, what the lab does, and why.
   catalogs together. User decision (2026-11-17): no enforcement.
 - Related: D11, D19.
 
+### D21 — Extra JDBC sources are not Iceberg catalogs
+- Requirement: issue #72 (2026-11-24).
+- Lab: a Spark catalog added through `LAB_EXTRA_DIR/conf/` (for example a `JDBCTableCatalog`
+  on SQL Server) is a read-only source. The rule "one catalog at a time" (D20) counts only the
+  Iceberg catalogs (nessie, polaris, rest).
+- Why: see the spec `docs/superpowers/specs/2026-11-24-extra-jdbc-sources-design.md`.
+- Related: D20.
+
 ## Findings
 
 ### F1 — Nessie S3 credentials (Nessie 0.109.0, checked 2026-10-28)
