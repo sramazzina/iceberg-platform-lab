@@ -212,6 +212,12 @@ services:
       # Apache Hop native Spark (spec 2026-11-13-hop-native-spark-design): fat jars and
       # project packages in dist/, hop-env.json in env/, outputs in out/.
       - ./hop:/workspace/hop
+      # Extra JDBC sources (spec 2026-11-24-extra-jdbc-sources): driver jars in jars/,
+      # Spark configuration files in conf/. Local, git-ignored.
+      - ${LAB_EXTRA_DIR:-./local/spark}:/opt/lab-extra:ro
+    extra_hosts:
+      # Sources that run on the host or in another Compose project.
+      - host.docker.internal:host-gateway
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8888/api >/dev/null"]
       interval: 5s
@@ -250,6 +256,12 @@ services:
       - ./secrets:/run/lab-secrets:ro
       # Read-only: a JDBC client can query the Parquet files (SELECT * FROM parquet.`...`).
       - ./landing:/workspace/landing:ro
+      # Extra JDBC sources (spec 2026-11-24-extra-jdbc-sources): driver jars in jars/,
+      # Spark configuration files in conf/. Local, git-ignored.
+      - ${LAB_EXTRA_DIR:-./local/spark}:/opt/lab-extra:ro
+    extra_hosts:
+      # Sources that run on the host or in another Compose project.
+      - host.docker.internal:host-gateway
     healthcheck:
       # A TCP check: a beeline call starts a JVM. tests/thrift-service.sh runs real SQL.
       test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/10000"]

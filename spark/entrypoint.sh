@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Renders the Spark configuration for the catalogs that are on (LAB_CATALOGS, a copy of
-# COMPOSE_PROFILES), then starts JupyterLab. When arguments are given, runs them instead
+# COMPOSE_PROFILES) and appends the extra configuration files of LAB_EXTRA_DIR, then starts
+# JupyterLab. When arguments are given, runs them instead
 # (for example spark-sql).
 set -euo pipefail
 source /usr/local/lib/lab/render.sh
@@ -43,6 +44,13 @@ umask 077
     else
       echo "lab-entrypoint: no Spark catalog for profile '$catalog' (spark/conf/catalogs/$catalog.conf)" >&2
     fi
+  done
+  # Extra configuration (spec 2026-11-24-extra-jdbc-sources): local files mounted from
+  # LAB_EXTRA_DIR, appended as is, in lexical order. A file that cannot be read stops the start.
+  for extra in /opt/lab-extra/conf/*.conf; do
+    [[ -f $extra ]] || continue
+    printf '\n# %s (LAB_EXTRA_DIR)\n' "${extra##*/}"
+    cat "$extra"
   done
 } >"$conf.new"
 mv "$conf.new" "$conf"
