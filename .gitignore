@@ -13,3 +13,4 @@ secrets/
 !/hop/env/.gitkeep
 /hop/out/*
 !/hop/out/.gitkeep
+/local/

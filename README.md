@@ -518,6 +518,69 @@ The Java 21 image replaces the Java 17 image. Run each command separately:
    `SPARK_BASE_IMAGE=apache/spark:4.1.3-scala2.13-java21-python3-ubuntu`.
 5. `make up`
 
+## Local files and extra JDBC sources
+
+The directory `local/` is git-ignored. Use it for files that belong to one installation.
+
+`LAB_EXTRA_DIR` sets the directory that Spark reads for extra files. The default is
+`./local/spark`. It has two subdirectories:
+
+- `jars/` holds JDBC driver jars. Spark adds them to the driver class path.
+- `conf/` holds `*.conf` files with Spark settings. The entrypoint appends them to
+  `spark-defaults.conf` in lexical order.
+
+The directory is mounted read-only at `/opt/lab-extra` in `spark` and `spark-thrift`.
+`make up` creates `jars/` and `conf/`. Run `make up` before a direct `docker compose up`.
+Otherwise Docker creates the directory with the owner root.
+
+After an update of the lab, run `make up` once. It rebuilds the `spark` image. The entrypoint is
+in the image.
+
+### Permissions
+
+The container user is `spark`. It has the UID of the host user (build argument `LAB_UID`, see
+`spark/Dockerfile`). This user must be able to read the files.
+
+- Set mode 755 on `local/spark`, `jars/` and `conf/`.
+- Set mode 644 on the files.
+
+Mode 700 on `local/` is fine. The container mounts only `local/spark`. It does not read `local/` itself.
+
+A `.conf` file that the container cannot read stops the start of the service. A jar that the
+container cannot read may be skipped without a message. Spark then shows `No suitable driver`.
+
+### Example: SQL Server
+
+1. Download the `jre11` build of `com.microsoft.sqlserver:mssql-jdbc` from Maven Central into
+   `local/spark/jars/`.
+2. Create `local/spark/conf/mssql.conf` with this content:
+
+   ```properties
+   spark.sql.catalog.mssql           org.apache.spark.sql.execution.datasources.v2.jdbc.JDBCTableCatalog
+   spark.sql.catalog.mssql.url       jdbc:sqlserver://host.docker.internal:1433;databaseName=<db>;encrypt=true;trustServerCertificate=true
+   spark.sql.catalog.mssql.user      <read-only login>
+   spark.sql.catalog.mssql.password  <password>
+   ```
+
+3. `docker compose restart spark spark-thrift`
+
+Run the same restart after each change in `jars/` or `conf/`.
+
+`host.docker.internal` is the host. A source in another Compose project must publish its port
+on the Docker bridge address (`172.17.0.1`), not on `127.0.0.1`.
+
+A catalog from `conf/` is a read-only source. It is not an Iceberg catalog. The rule "Use one
+catalog at a time" does not count it (NOTES D21; the rule itself is D20).
+
+Do not set `spark.driver.extraClassPath` in a `conf/` file. The last value wins and it
+replaces `jars/*`.
+
+| Symptom | Cause and fix |
+|---|---|
+| `No suitable driver` | The jar is missing or the container cannot read it. Check `jars/` and the mode. |
+| `Permission denied` at start | A `.conf` file has a mode that the container cannot read. Set mode 644. |
+| Connection refused | The source port is published on `127.0.0.1`. Publish it on `172.17.0.1`. |
+
 ## On-premise with RustFS
 
 The lab can run on a PC or on an on-premise server without AWS. RustFS replaces AWS S3: it
