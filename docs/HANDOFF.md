@@ -1,7 +1,10 @@
 # Handoff — Iceberg catalog lab
 
-- Date: 2026-11-17
-- From: Claude Code session on the EC2 VM (2026-11-17): Tasks 3 and 4 of #65 done, PR #71
+- Date: 2026-11-24
+- From: Claude Code session on the EC2 VM (2026-11-24): brainstorming, spec and plan of the
+  extra JDBC sources and the SQL Server shipping source for dbt study (branch
+  `feat/extra-jdbc-sources`, local only, not pushed; no issue yet).
+  Earlier: Claude Code session on the EC2 VM (2026-11-17): Tasks 3 and 4 of #65 done, PR #71
   opened (Closes #66-#69), D19 on `main`; Task 5 (#70) waits for the Hop artifacts.
   Earlier: Claude Code session on the EC2 VM (2026-11-13, evening): plan of #65, Tasks 1 and 2
   done (local commits, not pushed); Task 3 stopped by the user, to run again in full.
@@ -29,6 +32,7 @@
 | GitHub issues | #40 … #48, #50, #54 and #56-#62 closed, all checklists ticked. #51 open (low priority). #52 open (Python upgrade). #53 open (Power BI analysis, findings done). #55 open (dbt-trino experiment, now unblocked). #63 open (Trino on the RustFS variant, low priority). #65 open (Apache Hop native Spark, high priority) with task issues #66-#70 open |
 | Trino (#54) | Merged (PR #64, merge commit `dd7423f`, 2026-11-11). Branch `feat/trino` deleted (local and remote). Spec `docs/superpowers/specs/2026-11-11-trino-design.md`, plan `docs/superpowers/plans/2026-11-11-trino.md` (Tasks 1-7, all done). Decisions and findings: `NOTES.md` D17, D18, F10 |
 | Apache Hop native Spark (#65) | **PR #71 open, waits for the user merge** (Closes #66-#69). Task 5 (#70, end-to-end trial) waits for the Hop artifacts. Earlier state: branch `feat/hop-native-spark` (pushed, no PR): request `docs/lab-adaptation-for-hop-native-spark.md`, spec `docs/superpowers/specs/2026-11-13-hop-native-spark-design.md`, plan `docs/superpowers/plans/2026-11-13-hop-native-spark.md` (Tasks 1-5 = issues #66-#70). Tasks 1 (#66) and 2 (#67) done, reviewed, checklists ticked; commits `5c1b453` and `d507179` are **local on the EC2 VM, not pushed**. Task 3 (#68) stopped, not done. Execution on the EC2 VM |
+| Extra JDBC sources + SQL Server shipping source (no issue yet) | **Spec and plan written, execution not started.** Branch `feat/extra-jdbc-sources` (**local on the EC2 VM, not pushed**): commits `80674ae` (spec `docs/superpowers/specs/2026-11-24-extra-jdbc-sources-design.md`) and `b51c2c7` (plan `docs/superpowers/plans/2026-11-24-extra-jdbc-sources.md`, Tasks 0-8). Part L (lab, PR) + Part S (local files in the dbt project `~/work/academy/dbt-iceberg-lab`, never committed) |
 | Repository name | `sramazzina/iceberg-platform-lab` since 2026-11-05 (was `iceberg-platform-poc`; GitHub redirects the old name) |
 | CI | The repository has no GitHub Actions workflow |
 
@@ -177,6 +181,28 @@ Changes of 2026-11-13 (EC2 VM, evening), plan of #65 executed subagent-driven:
 
 ## Resume here
 
+Update of 2026-11-24 (supersedes the older steps below for new work):
+- Goal: the user studies dbt with the dbt project `~/work/academy/dbt-iceberg-lab` (remote
+  `sramazzina/dbt-project-iceberg-lab`; dbt-spark thrift, catalog nessie). Source for the
+  exercises: a local SQL Server shipping database read by dbt-spark through a Spark
+  `JDBCTableCatalog` (`mssql`). The lab gets `LAB_EXTRA_DIR` (default `./local/spark`,
+  git-ignored): `jars/` on the driver class path, `conf/*.conf` appended by the entrypoint.
+- Next: `git switch feat/extra-jdbc-sources` (local commits; do not reset to `origin`), then
+  execute the plan subagent-driven from **Task 0** (open the issues). Task 4 is a gate (spike
+  on dbt-spark sources with a catalog prefix): if variants a, b, c fail, stop and ask the user.
+  Task 7 (manual, HTML) is written by the main agent.
+- Decisions B1-B12 are in the spec, section 3: do not ask them again. Regression on `nessie`
+  only. `NOTES.md`: D21 and F12 planned (F11 stays reserved for #70).
+- Lab state at the end of 2026-11-24: up with `COMPOSE_PROFILES=nessie,trino` (no thrift).
+  The plan needs `nessie,thrift` (memory: no Trino with thrift on the 8 GB VM): confirm with
+  the user before the `.env` change.
+- The dbt project `CLAUDE.md`, README, `dbt_project.yml`, `requirements.txt` name the lab
+  `../iceberg-platform-poc`: wrong (renamed, not a sibling). Out of scope; reported to the user.
+- Environment fixes of 2026-11-24: `serena` installed with `uv tool install` (MCP connects).
+  The GitHub MCP server needs `export` in `~/.config/zsh/exports/github` (the user handles it).
+  The statusLine is `npx -y ccstatusline@latest` again (a statusline-setup agent replaced it;
+  restored on user request). `.serena/` is untracked in the lab: not yet in `.gitignore`.
+
 Update of 2026-11-17 (supersedes step 1 below):
 - Task 3 (#68): full regression on Java 21 passed on the EC2 VM (results in #68 and in
   `NOTES.md` D19). The stack was down at the start (containers Exited for 3 days): run
@@ -322,6 +348,7 @@ the absolute path of the directory, so the stack must stop before the rename.
 
 ## Open points to watch
 
+- Extra JDBC sources (2026-11-24): plan ready, branch local only; no issue yet (plan Task 0).
 - Issue #65 (high priority): Apache Hop native Spark, PR #71 open; Task 5 (#70) pending.
 - One catalog at a time: user rule, documented (`NOTES.md` D20), not enforced (user decision
   2026-11-17).
