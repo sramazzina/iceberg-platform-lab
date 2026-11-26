@@ -1,19 +1,13 @@
-## Subagent model policy
+# CLAUDE.md
 
-- **Code exploration / fact-finding subagents** (reading the sources, enumerating
-  symbols, reporting usages, verifying claims) MUST be launched with `model: "sonnet"`.
-- **Synthesis, architectural judgement, writing of deliverables** stays with the main
-  (default) model; do not delegate these to cheaper models.
-- Explorer subagents must report file paths (and symbol names, where they apply) for
-  every claim.
+Iceberg platform lab: a reproducible Docker Compose lab to evaluate and compare the Apache Iceberg REST catalogs Apache Polaris and Project Nessie (with Spark, Trino, dbt and Hop), on an EC2 VM with AWS S3 or on-premise with RustFS. It is a test environment, not production. Usage is in `README.md`.
 
-## Git
+## Git workflow
 
-- Never add a `Co-Authored-By` line (or any other Claude co-author trailer) to a git commit
-  message. This rule applies to every commit, including commits made by subagents.
-- Never add a "Generated with Claude Code" line (or any other Claude attribution) to a pull
-  request description, a pull request comment or an issue.
+- Changes to the lab (Compose files, service directories, `aws/`, `elt/`, `scenarios/`, `tests/`, `Makefile`) go on a branch and reach `main` through a PR. The user merges.
+- Documentation (`docs/`, `NOTES.md`, `README.md`, `VERSIONS.md`) may be committed directly on `main`.
+- No AI attribution (`Co-Authored-By` trailers or similar) in commits, PRs, issues or PR/issue comments.
 
-## Writing style
+## Notes
 
-- Provide explanations in the spirit of ASD-STE100 (Simplified Technical English): keep sentence structures direct, limit each procedural step to a single action, and avoid unnecessary synonyms (use one term for one concept).
+- Record deviations and decisions in `NOTES.md` as `Dnn`, findings as `Fnn`, with the next free number.
